@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>La Serre d’Emeraude</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        /* CSS specifique pour l'onglet Admin et les elements caches (conserve) */
+        .admin-panel {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            gap: 15px;
+        }
+        
+        .admin-input {
+            padding: 10px;
+            background-color: #0d1410;
+            border: 1px solid #39ff14;
+            color: #39ff14;
+            font-family: 'Courier New', monospace;
+            width: 200px;
+            text-align: center;
+        }
+
+        .admin-btn {
+            padding: 10px 20px;
+            background-color: #1b4d1b;
+            border: 1px solid #39ff14;
+            color: #e0ffe0;
+            cursor: pointer;
+            font-family: 'Courier New', monospace;
+            transition: all 0.2s;
+        }
+
+        .admin-btn:hover {
+            background-color: #2a6e2a;
+            box-shadow: 0 0 10px #39ff14;
+        }
+
+        .cheat-section {
+            margin-top: 20px;
+            display: none; /* Cache par defaut */
+            flex-direction: column;
+            gap: 10px;
+            border-top: 1px dashed #1b4d1b;
+            padding-top: 20px;
+        }
+
+        .cheat-btn {
+            background-color: #4d1b1b;
+            border-color: #ff3939;
+            color: #ffcccc;
+        }
+        
+        .cheat-btn:hover {
+            background-color: #6e2a2a;
+            box-shadow: 0 0 10px #ff3939;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+        
+        /* Style pour la nouvelle barre minimaliste */
+        .nav-minimal {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            background-color: var(--panel-bg);
+            border-top: 2px solid var(--dim-green);
+            height: 60px;
+            align-items: center;
+            z-index: 100;
+            flex-shrink: 0;
+        }
+
+        .nav-btn-main {
+            background: transparent;
+            border: 2px solid var(--neon-green);
+            color: var(--neon-green);
+            font-size: 1.5rem;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: all 0.2s;
+            box-shadow: 0 0 10px rgba(57, 255, 20, 0.2);
+        }
+
+        .nav-btn-main:hover {
+            background-color: rgba(57, 255, 20, 0.1);
+            box-shadow: 0 0 20px var(--neon-green);
+            transform: scale(1.1);
+        }
+    </style>
+</head>
+<body>
+
+    <!-- En-tete : Titre et Liste des Ressources -->
+    <header>
+        <h1>La Serre d’Emeraude</h1>
+
+        <div id="xp-bar-container" class="xp-bar-container">
+            <span id="niveau-label" class="niveau-label">Niveau 1</span>
+            <div class="xp-bar-track">
+                <div id="xp-bar-fill" class="xp-bar-fill" style="width: 0%;"></div>
+            </div>
+            <span id="xp-label" class="xp-label">0 / 100 XP</span>
+        </div>
+
+        <div id="resources-list" class="resources-container">
+            <!-- Les seves seront injectees ici par app.js -->
+        </div>
+    </header>
+
+    <!-- Zone principale divisee en deux : Jeu a gauche, Navigation Routes a droite -->
+    <main class="main-layout">
+        
+        <!-- Colonne Gauche : Zone de Jeu (La Serre) -->
+        <section id="game-area" class="game-column">
+            <!-- Conteneur des onglets -->
+            <div id="game-container">
+                
+                <!-- Onglet 1 : La Serre (Actif par defaut) -->
+                <div id="tab-serre" class="tab-content active">
+                    <!-- Les plantes seront injectees ici par app.js -->
+                </div>
+
+                <!-- Onglet 2 : Gestion -->
+                <div id="tab-gestion" class="tab-content">
+                    <p class="empty-tab-message">Module de gestion en developpement...</p>
+                </div>
+
+                <!-- Onglet 3 : Evolution -->
+                <div id="tab-evolution" class="tab-content">
+                    <p class="empty-tab-message">Arbre d'evolution en developpement...</p>
+                </div>
+
+                <!-- Onglet 4 : Collection -->
+                <div id="tab-collection" class="tab-content">
+                    <p class="empty-tab-message">Encyclopedie en developpement...</p>
+                </div>
+
+                <!-- Onglet 5 : Bassins -->
+                <div id="tab-bassins" class="tab-content">
+                    <p class="empty-tab-message">Gestion des bassins en developpement...</p>
+                </div>
+
+                <!-- Onglet 6 : Admin (Gere via le Menu Global maintenant, mais on garde la div au cas ou) -->
+                <div id="tab-admin" class="tab-content">
+                    <div class="admin-panel">
+                        <button id="btn-retour-admin" class="admin-btn admin-btn-retour" onclick="window.fermerPanelAdmin()" style="align-self: flex-start;">⬅ Retour</button>
+
+                        <h3 style="color: #39ff14; text-shadow: 0 0 5px #39ff14;">Panneau d'Administration</h3>
+                        
+                        <div style="display: flex; gap: 10px;">
+                            <input type="password" id="admin-code-input" class="admin-input" placeholder="Code Secret...">
+                            <button id="btn-validate-code" class="admin-btn">Valider</button>
+                        </div>
+
+                        <!-- Zone de triche cachee -->
+                        <div id="cheat-controls" class="cheat-section">
+                            <p style="color: #ff3939; font-size: 0.8rem;">⚠️ Mode Triche Active</p>
+                            <button id="btn-cheat-clear" class="admin-btn cheat-btn">Clear Vague Actuelle</button>
+                            <button id="btn-cheat-skip" class="admin-btn cheat-btn">Monter Niveau Instant</button>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+        <!-- Colonne Droite : Navigation des Routes -->
+        <aside id="route-nav" class="route-column">
+            <!-- Icone de combat contre le Boss -->
+            <button id="btn-boss-fight" class="boss-icon-btn" title="Combattre le Cœur de la Serre d'Émeraude" onclick="window.ouvrirBoss()">
+                <img src="./images/boss/Coeur de la Serre d’Emeraude.png" alt="Boss" onerror="this.style.display='none'">
+                <div id="boss-icon-cooldown" class="boss-icon-cooldown"></div>
+            </button>
+
+            <button id="btn-route-next" class="route-btn" title="Route Suivante">
+                ▲
+            </button>
+            
+            <div class="route-info">
+                <h2 id="route-title">Route 1</h2>
+                <p id="wave-progress">Vagues: 0/10</p>
+            </div>
+
+            <button id="btn-route-prev" class="route-btn" title="Route Precedente">
+                ▼
+            </button>
+
+            <button id="btn-auto-route" class="auto-route-btn" title="Monte automatiquement de route des qu'elle est debloquee">
+                AUTO
+            </button>
+        </aside>
+
+    </main>
+
+    <!-- Barre de navigation inferieure simplifiee -->
+    <nav class="nav-minimal">
+        <!-- Bouton Menu Global -->
+        <button id="btn-menu-global" class="nav-btn-main" onclick="window.ouvrirMenuGlobal()">
+            💠
+        </button>
+        
+        <!-- NOUVEAU : Bouton Statistiques -->
+        <button id="btn-stats" class="nav-btn-main" onclick="window.afficherStatsSecateur()">
+            📈
+        </button>
+
+        <!-- Bouton Parametres -->
+        <button id="btn-parametres" class="nav-btn-main" onclick="window.ouvrirParametres()">
+            ⚙️
+        </button>
+    </nav>
+
+<!-- Scripts -->
+    <!-- 1. Fichiers de donnees et initialisation (Base de tout) -->
+    <script src="donnees.js"></script>
+    <script src="app.js"></script>
+
+    <!-- 2. Modules fonctionnels (Dependent de app.js) -->
+    <script src="economie.js"></script>
+    <script src="experience.js"></script>
+    <script src="secateur.js"></script>
+    <script src="Symbiotes.js"></script>
+    <script src="Boss.js"></script>
+    <script src="Extraction.js"></script>
+    <script src="Vente.js"></script>
+    <script src="upgrades.js"></script>
+    <script src="Mutation_Genetique.js"></script>
+    <script src="boutique.js"></script>
+    <script src="L_Arbre_d_evolution.js"></script>
+    <script src="Capsules.js"></script>
+
+    <!-- 3. Interface et menus (Dependent de tout ce qui precede) -->
+    <script src="menu.js"></script>
+
+    <script src="parametres.js"></script>
+    <script src="stats.js"></script>
+    <script src="admin.js"></script>
+</body>
+</html>
