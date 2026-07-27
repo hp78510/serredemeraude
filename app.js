@@ -410,9 +410,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 item.className = 'resource-item';
                 item.innerHTML = `
                     <div class="resource-pair">
-                        <span class="res-plant">${window.creerImgPlanteHTML(plantName, 'res-plant-img')} ${plantCount}</span>
+                        <span class="res-plant">${window.creerImgPlanteHTML(plantName, 'res-plant-img')} <span class="amount">${plantCount}</span></span>
                         <span class="res-separator">|</span>
-                        <span class="res-sap">${sapIcon} ${sapCount}</span>
+                        <span class="res-sap">${sapIcon} <span class="amount">${sapCount}</span></span>
                     </div>
                 `;
                 item.title = `${plantName} → ${sapName}`;

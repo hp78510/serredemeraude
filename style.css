@@ -120,21 +120,29 @@ h1 {
     font-size: 0.9rem;
 }
 
+.res-plant-img {
+    width: 1.2rem; /* Taille similaire à l'icône de sève/emoji */
+    height: 1.2rem;
+    object-fit: contain;
+    vertical-align: middle;
+    margin-right: 4px;
+}
+
 .res-plant {
+    display: flex;
+    align-items: center;
     color: #aaffaa; /* Vert clair pour les plantes */
 }
 
-.res-plant-img {
-    width: 18px;
-    height: 18px;
-    object-fit: contain;
-    vertical-align: middle;
-    margin-right: 2px;
-}
-
 .res-sap {
+    display: flex;
+    align-items: center;
     color: #39ff14; /* Vert neon pour les seves */
     font-weight: bold;
+}
+
+.res-plant .amount, .res-sap .amount {
+    margin-left: 4px;
 }
 
 .res-separator {
@@ -210,6 +218,34 @@ h1 {
     padding: 20px;
     box-shadow: -5px 0 15px rgba(0,0,0,0.5);
     z-index: 5;
+    transition: width 0.3s ease;
+}
+
+/* --- RESPONSIVE MOBILE --- */
+@media screen and (max-width: 768px) {
+    .route-column {
+        width: 80px; /* Reduit significativement sur mobile */
+        padding: 10px 5px;
+    }
+
+    .route-info h2 {
+        font-size: 1rem;
+    }
+
+    .route-info p {
+        font-size: 0.7rem;
+    }
+
+    .route-btn {
+        width: 45px;
+        height: 45px;
+        font-size: 1.2rem;
+    }
+
+    .auto-route-btn {
+        font-size: 0.6rem;
+        padding: 5px 10px;
+    }
 }
 
 /* Style des elements dans le panneau des routes */
