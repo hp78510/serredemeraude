@@ -11,7 +11,7 @@ document.addEventListener('DOMContentLoaded', () => {
         sapPerKill: 10        // Quantite de seve gagnee par plante tuee
     };
 
-    /// --- ETAT DU JEU (Exporte vers window) ---
+    // --- ETAT DU JEU (Exporte vers window) ---
     // Valeurs par defaut
     const defaultGameState = {
         currentRoute: 1,
