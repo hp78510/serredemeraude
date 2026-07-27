@@ -1,249 +1,499 @@
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>La Serre d’Emeraude</title>
-    <link rel="stylesheet" href="style.css?v=2">
-    <style>
-        /* CSS specifique pour l'onglet Admin et les elements caches (conserve) */
-        .admin-panel {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            height: 100%;
-            gap: 15px;
-        }
-        
-        .admin-input {
-            padding: 10px;
-            background-color: #0d1410;
-            border: 1px solid #39ff14;
-            color: #39ff14;
-            font-family: 'Courier New', monospace;
-            width: 200px;
-            text-align: center;
-        }
+/* --- VARIABLES & RESET --- */
+:root {
+    --bg-color: #050a05;       /* Noir profond */
+    --panel-bg: #0d1410;       /* Gris vert tres sombre */
+    --neon-green: #39ff14;     /* Vert electrique principal */
+    --dim-green: #1b4d1b;      /* Vert sombre pour bordures inactives */
+    --text-color: #e0ffe0;     /* Texte clair */
+    --border-color: #2a4d2a;
+}
 
-        .admin-btn {
-            padding: 10px 20px;
-            background-color: #1b4d1b;
-            border: 1px solid #39ff14;
-            color: #e0ffe0;
-            cursor: pointer;
-            font-family: 'Courier New', monospace;
-            transition: all 0.2s;
-        }
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
 
-        .admin-btn:hover {
-            background-color: #2a6e2a;
-            box-shadow: 0 0 10px #39ff14;
-        }
+body {
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    font-family: 'Courier New', Courier, monospace;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    user-select: none;
+}
 
-        .cheat-section {
-            margin-top: 20px;
-            display: none; /* Cache par defaut */
-            flex-direction: column;
-            gap: 10px;
-            border-top: 1px dashed #1b4d1b;
-            padding-top: 20px;
-        }
+/* --- EN-TETE & RESSOURCES --- */
+header {
+    text-align: center;
+    padding: 2px 5px !important; /* Padding ultra réduit */
+    border-bottom: 1px solid var(--dim-green) !important;
+    box-shadow: 0 0 5px var(--dim-green) !important;
+    z-index: 10;
+    background-color: var(--bg-color);
+    flex-shrink: 0;
+}
 
-        .cheat-btn {
-            background-color: #4d1b1b;
-            border-color: #ff3939;
-            color: #ffcccc;
-        }
-        
-        .cheat-btn:hover {
-            background-color: #6e2a2a;
-            box-shadow: 0 0 10px #ff3939;
-        }
+h1 {
+    font-size: 0.8rem !important; /* Titre minuscule */
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    text-shadow: 0 0 2px var(--neon-green);
+    margin-bottom: 2px !important;
+}
 
-        .hidden {
-            display: none !important;
-        }
-        
-        /* Style pour la nouvelle barre minimaliste */
-        .nav-minimal {
-            display: flex;
-            justify-content: center;
-            gap: 20px;
-            background-color: var(--panel-bg);
-            border-top: 2px solid var(--dim-green);
-            height: 60px;
-            align-items: center;
-            z-index: 100;
-            flex-shrink: 0;
-        }
+/* Conteneur dynamique des ressources */
+.resources-container {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 10px;
+    max-width: 100%;
+}
 
-        .nav-btn-main {
-            background: transparent;
-            border: 2px solid var(--neon-green);
-            color: var(--neon-green);
-            font-size: 1.5rem;
-            width: 50px;
-            height: 50px;
-            border-radius: 50%;
-            cursor: pointer;
-            transition: all 0.2s;
-            box-shadow: 0 0 10px rgba(57, 255, 20, 0.2);
-        }
+.xp-bar-container {
+    display: flex;
+    align-items: center;
+    gap: 5px !important;
+    max-width: 400px;
+    margin: 0 auto 2px auto !important;
+}
 
-        .nav-btn-main:hover {
-            background-color: rgba(57, 255, 20, 0.1);
-            box-shadow: 0 0 20px var(--neon-green);
-            transform: scale(1.1);
-        }
-    </style>
-</head>
-<body>
+.niveau-label {
+    color: var(--neon-green);
+    font-weight: bold;
+    font-size: 0.85rem;
+    text-shadow: 0 0 5px var(--neon-green);
+    white-space: nowrap;
+}
 
-    <!-- En-tete : Titre et Liste des Ressources -->
-    <header>
-        <h1>La Serre d’Emeraude</h1>
+.xp-bar-track {
+    flex: 1;
+    height: 10px;
+    background: rgba(0, 0, 0, 0.4);
+    border: 1px solid var(--dim-green);
+    border-radius: 5px;
+    overflow: hidden;
+}
 
-        <div id="xp-bar-container" class="xp-bar-container">
-            <span id="niveau-label" class="niveau-label">Niveau 1</span>
-            <div class="xp-bar-track">
-                <div id="xp-bar-fill" class="xp-bar-fill" style="width: 0%;"></div>
-            </div>
-            <span id="xp-label" class="xp-label">0 / 100 XP</span>
-        </div>
+.xp-bar-fill {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, var(--dim-green), var(--neon-green));
+    box-shadow: 0 0 8px var(--neon-green);
+    transition: width 0.3s ease;
+}
 
-        <div id="resources-list" class="resources-container">
-            <!-- Les seves seront injectees ici par app.js -->
-        </div>
-    </header>
+.xp-bar-fill.xp-bar-bloque {
+    background: linear-gradient(90deg, #5c3a0a, #ffb347);
+    box-shadow: 0 0 8px rgba(255, 179, 71, 0.6);
+}
 
-    <!-- Zone principale divisee en deux : Jeu a gauche, Navigation Routes a droite -->
-    <main class="main-layout">
-        
-        <!-- Colonne Gauche : Zone de Jeu (La Serre) -->
-        <section id="game-area" class="game-column">
-            <!-- Conteneur des onglets -->
-            <div id="game-container">
-                
-                <!-- Onglet 1 : La Serre (Actif par defaut) -->
-                <div id="tab-serre" class="tab-content active">
-                    <!-- Les plantes seront injectees ici par app.js -->
-                </div>
+.xp-label {
+    font-size: 0.7rem;
+    color: var(--text-color);
+    opacity: 0.7;
+    white-space: nowrap;
+    font-family: 'Courier New', monospace;
+}
 
-                <!-- Onglet 2 : Gestion -->
-                <div id="tab-gestion" class="tab-content">
-                    <p class="empty-tab-message">Module de gestion en developpement...</p>
-                </div>
+.resource-item {
+    background-color: var(--panel-bg);
+    border: 1px solid var(--dim-green);
+    padding: 1px 4px !important; /* Padding ultra réduit */
+    border-radius: 4px;
+    font-size: 0.7rem !important; /* Texte minuscule */
+    box-shadow: 0 0 3px rgba(57, 255, 20, 0.1) !important;
+}
 
-                <!-- Onglet 3 : Evolution -->
-                <div id="tab-evolution" class="tab-content">
-                    <p class="empty-tab-message">Arbre d'evolution en developpement...</p>
-                </div>
+.resource-item strong {
+    color: var(--neon-green);
+}
 
-                <!-- Onglet 4 : Collection -->
-                <div id="tab-collection" class="tab-content">
-                    <p class="empty-tab-message">Encyclopedie en developpement...</p>
-                </div>
+/* Style pour les paires de ressources dans l'en-tete */
+.resource-pair {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.9rem;
+}
 
-                <!-- Onglet 5 : Bassins -->
-                <div id="tab-bassins" class="tab-content">
-                    <p class="empty-tab-message">Gestion des bassins en developpement...</p>
-                </div>
+.res-plant-img {
+    width: 14px !important; /* Taille minuscule */
+    height: 14px !important;
+    object-fit: contain;
+    vertical-align: middle;
+    margin-right: 2px !important;
+}
 
-                <!-- Onglet 6 : Admin (Gere via le Menu Global maintenant, mais on garde la div au cas ou) -->
-                <div id="tab-admin" class="tab-content">
-                    <div class="admin-panel">
-                        <button id="btn-retour-admin" class="admin-btn admin-btn-retour" onclick="window.fermerPanelAdmin()" style="align-self: flex-start;">⬅ Retour</button>
+.res-plant {
+    display: flex;
+    align-items: center;
+    color: #aaffaa; /* Vert clair pour les plantes */
+}
 
-                        <h3 style="color: #39ff14; text-shadow: 0 0 5px #39ff14;">Panneau d'Administration</h3>
-                        
-                        <div style="display: flex; gap: 10px;">
-                            <input type="password" id="admin-code-input" class="admin-input" placeholder="Code Secret...">
-                            <button id="btn-validate-code" class="admin-btn">Valider</button>
-                        </div>
+.res-sap {
+    display: flex;
+    align-items: center;
+    color: #39ff14; /* Vert neon pour les seves */
+    font-weight: bold;
+}
 
-                        <!-- Zone de triche cachee -->
-                        <div id="cheat-controls" class="cheat-section">
-                            <p style="color: #ff3939; font-size: 0.8rem;">⚠️ Mode Triche Active</p>
-                            <button id="btn-cheat-clear" class="admin-btn cheat-btn">Clear Vague Actuelle</button>
-                            <button id="btn-cheat-skip" class="admin-btn cheat-btn">Monter Niveau Instant</button>
-                        </div>
-                    </div>
-                </div>
+.res-plant .amount, .res-sap .amount {
+    margin-left: 4px;
+}
 
-            </div>
-        </section>
+.res-separator {
+    color: #555;
+    margin: 0 4px;
+}
 
-        <!-- Colonne Droite : Navigation des Routes -->
-        <aside id="route-nav" class="route-column">
-            <!-- Icone de combat contre le Boss -->
-            <button id="btn-boss-fight" class="boss-icon-btn" title="Combattre le Cœur de la Serre d'Émeraude" onclick="window.ouvrirBoss()">
-                <img src="./images/boss/Coeur de la Serre d’Emeraude.png" alt="Boss" onerror="this.style.display='none'">
-                <div id="boss-icon-cooldown" class="boss-icon-cooldown"></div>
-            </button>
+#resources-list {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+    max-width: 100%;
+    padding-bottom: 5px;
+}
 
-            <button id="btn-route-next" class="route-btn" title="Route Suivante">
-                ▲
-            </button>
-            
-            <div class="route-info">
-                <h2 id="route-title">Route 1</h2>
-                <p id="wave-progress">Vagues: 0/10</p>
-            </div>
+.money-container {
+    display: flex;
+    gap: 15px;
+}
 
-            <button id="btn-route-prev" class="route-btn" title="Route Precedente">
-                ▼
-            </button>
+.money-item {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    background-color: rgba(0, 0, 0, 0.3);
+    padding: 5px 10px;
+    border-radius: 15px;
+    border: 1px solid var(--dim-green);
+}
 
-            <button id="btn-auto-route" class="auto-route-btn" title="Monte automatiquement de route des qu'elle est debloquee">
-                AUTO
-            </button>
-        </aside>
+.money-item .icon {
+    font-size: 1.2rem;
+}
 
-    </main>
+.money-item .amount {
+    font-weight: bold;
+    color: #fff;
+}
 
-    <!-- Barre de navigation inferieure simplifiee -->
-    <nav class="nav-minimal">
-        <!-- Bouton Menu Global -->
-        <button id="btn-menu-global" class="nav-btn-main" onclick="window.ouvrirMenuGlobal()">
-            💠
-        </button>
-        
-        <!-- NOUVEAU : Bouton Statistiques -->
-        <button id="btn-stats" class="nav-btn-main" onclick="window.afficherStatsSecateur()">
-            📈
-        </button>
+.header-separator {
+    color: var(--dim-green);
+    font-size: 1.5rem;
+    line-height: 20px;
+    margin: 0 5px;
+}
 
-        <!-- Bouton Parametres -->
-        <button id="btn-parametres" class="nav-btn-main" onclick="window.ouvrirParametres()">
-            ⚙️
-        </button>
-    </nav>
+/* --- LAYOUT PRINCIPAL (Jeu + Routes) --- */
+.main-layout {
+    flex: 1; /* Prend toute la hauteur restante */
+    display: flex;
+    overflow: hidden; /* Empeche le scroll global */
+}
 
-<!-- Scripts -->
-    <!-- 1. Fichiers de donnees et initialisation (Base de tout) -->
-    <script src="donnees.js?v=2"></script>
-    <script src="app.js?v=2"></script>
+/* Colonne Gauche : Zone de Jeu */
+.game-column {
+    flex: 1; /* Prend l'espace disponible */
+    position: relative;
+    background-color: var(--bg-color);
+    border-right: 2px solid var(--dim-green);
+    overflow: hidden;
+}
 
-    <!-- 2. Modules fonctionnels (Dependent de app.js) -->
-    <script src="economie.js"></script>
-    <script src="experience.js"></script>
-    <script src="secateur.js"></script>
-    <script src="Symbiotes.js"></script>
-    <script src="Boss.js"></script>
-    <script src="Extraction.js"></script>
-    <script src="Vente.js"></script>
-    <script src="upgrades.js"></script>
-    <script src="Mutation_Genetique.js"></script>
-    <script src="boutique.js"></script>
-    <script src="L_Arbre_d_evolution.js"></script>
-    <script src="Capsules.js"></script>
+/* Colonne Droite : Navigation des Routes */
+.route-column {
+    width: 250px; /* Largeur fixe pour le panneau lateral */
+    background-color: var(--panel-bg);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    box-shadow: -5px 0 15px rgba(0,0,0,0.5);
+    z-index: 5;
+    transition: width 0.3s ease;
+}
 
-    <!-- 3. Interface et menus (Dependent de tout ce qui precede) -->
-    <script src="menu.js"></script>
+/* --- RESPONSIVE MOBILE --- */
+@media screen and (max-width: 768px) {
+    .route-column {
+        width: 80px; /* Reduit significativement sur mobile */
+        padding: 10px 5px;
+    }
 
-    <script src="parametres.js"></script>
-    <script src="stats.js"></script>
-    <script src="admin.js"></script>
-</body>
-</html>
+    .route-info h2 {
+        font-size: 1rem;
+    }
+
+    .route-info p {
+        font-size: 0.7rem;
+    }
+
+    .route-btn {
+        width: 45px;
+        height: 45px;
+        font-size: 1.2rem;
+    }
+
+    .auto-route-btn {
+        font-size: 0.6rem;
+        padding: 5px 10px;
+    }
+}
+
+/* Style des elements dans le panneau des routes */
+.route-info {
+    text-align: center;
+    margin: 20px 0;
+}
+
+.route-info h2 {
+    color: var(--neon-green);
+    text-shadow: 0 0 8px var(--neon-green);
+    margin-bottom: 5px;
+    font-size: 1.8rem;
+}
+
+.route-info p {
+    color: var(--text-color);
+    opacity: 0.8;
+    font-size: 1rem;
+}
+
+.route-btn {
+    background: transparent;
+    border: 2px solid var(--dim-green);
+    color: var(--neon-green);
+    font-size: 2rem;
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 0 10px rgba(57, 255, 20, 0.1);
+}
+
+.route-btn:hover:not(:disabled) {
+    border-color: var(--neon-green);
+    box-shadow: 0 0 20px var(--neon-green);
+    transform: scale(1.1);
+}
+
+.route-btn:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+    border-color: var(--dim-green);
+    color: var(--dim-green);
+}
+
+/* --- BOUTON AUTO (montee automatique de route) --- */
+.auto-route-btn {
+    margin-top: 15px;
+    background: transparent;
+    border: 2px solid var(--dim-green);
+    color: var(--dim-green);
+    font-size: 0.75rem;
+    font-weight: bold;
+    letter-spacing: 1px;
+    padding: 8px 16px;
+    border-radius: 20px;
+    cursor: pointer;
+    transition: all 0.25s;
+}
+
+.auto-route-btn:hover {
+    border-color: var(--neon-green);
+    color: var(--neon-green);
+}
+
+.auto-route-btn.active {
+    background: var(--neon-green);
+    border-color: var(--neon-green);
+    color: #000;
+    box-shadow: 0 0 15px var(--neon-green), 0 0 30px rgba(57, 255, 20, 0.4);
+    animation: autoPulse 1.5s ease-in-out infinite;
+}
+
+@keyframes autoPulse {
+    0%, 100% { box-shadow: 0 0 10px var(--neon-green), 0 0 20px rgba(57, 255, 20, 0.3); }
+    50% { box-shadow: 0 0 20px var(--neon-green), 0 0 40px rgba(57, 255, 20, 0.6); }
+}
+
+/* --- ZONE DE JEU INTERNE (ONGLETS) --- */
+#game-container {
+    width: 100%;
+    height: 100%;
+    position: relative;
+}
+
+.tab-content {
+    display: none;
+    width: 100%;
+    height: 100%;
+    position: relative; /* CRUCIAL : Permet le positionnement absolu des plantes */
+    overflow: hidden;
+    background-image: radial-gradient(circle at center, #0a150a 0%, #050a05 100%);
+}
+
+.tab-content.active {
+    display: block;
+}
+
+/* --- PLANTES (GENEREES PAR JS) --- */
+.plant-entity {
+    position: absolute;
+    cursor: crosshair;
+    z-index: 5;
+    filter: drop-shadow(0 0 5px var(--neon-green));
+    transition: transform 0.1s ease-in-out;
+    pointer-events: none; /* Le clic passe au travers pour toucher le conteneur */
+}
+
+.plant-img {
+    display: block;
+    width: 64px;
+    height: 64px;
+    object-fit: contain;
+    pointer-events: none;
+}
+
+/* Barre de vie des plantes */
+.health-bar-container {
+    position: absolute;
+    top: -10px;
+    left: 0;
+    width: 100%;
+    height: 5px;
+    background-color: #333;
+    border-radius: 3px;
+    overflow: hidden;
+    border: 1px solid #000;
+}
+
+.health-bar-fill {
+    height: 100%;
+    background-color: #39ff14;
+    transition: width 0.2s ease-out, background-color 0.2s;
+}
+
+/* --- EFFET DE CLIC (HITBOX) --- */
+/* Effet du joueur (clic manuel) : reste bien visible mais moins agressif qu'avant */
+.click-effect {
+    position: absolute;
+    border: 1px solid var(--neon-green);
+    border-radius: 50%;
+    background-color: rgba(57, 255, 20, 0.08);
+    pointer-events: none;
+    box-shadow: 0 0 6px rgba(57, 255, 20, 0.5);
+    opacity: 1;
+    animation: fadeOut 0.2s ease-out forwards;
+    z-index: 10;
+}
+
+/* Effet des symbiotes (attaques automatiques, souvent tres frequentes et nombreuses) :
+   version tres attenuee pour ne plus fatiguer les yeux quand plusieurs symbiotes
+   attaquent rapidement en meme temps. On ajoute cette classe EN PLUS de .click-effect. */
+.click-effect-symbiote {
+    border-color: rgba(57, 255, 20, 0.35);
+    background-color: rgba(57, 255, 20, 0.03);
+    box-shadow: 0 0 3px rgba(57, 255, 20, 0.25);
+    animation-duration: 0.15s;
+}
+
+@keyframes fadeOut {
+    0% {
+        opacity: 0.8;
+        transform: scale(0.85);
+    }
+    100% {
+        opacity: 0;
+        transform: scale(1.15);
+    }
+}
+
+/* --- BARRE DE NAVIGATION BAS --- */
+nav {
+    display: flex;
+    background-color: var(--panel-bg);
+    border-top: 2px solid var(--dim-green);
+    height: 70px;
+    z-index: 20;
+    flex-shrink: 0;
+}
+
+.nav-item {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: var(--dim-green);
+    font-size: 0.75rem;
+    cursor: pointer;
+    transition: color 0.3s, text-shadow 0.3s;
+}
+
+.nav-item span {
+    font-size: 1.4rem;
+    margin-bottom: 4px;
+}
+
+.nav-item.active-tab {
+    color: var(--neon-green);
+    text-shadow: 0 0 8px var(--neon-green);
+}
+
+.nav-item:hover {
+    color: #aaffaa;
+}
+
+/* --- NAVIGATION MINIMALE --- */
+.nav-minimal {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+    background-color: var(--panel-bg);
+    border-top: 2px solid var(--dim-green);
+    height: 60px;
+    align-items: center;
+    z-index: 100;
+    flex-shrink: 0;
+}
+
+.nav-btn-main {
+    background: transparent;
+    border: 2px solid var(--neon-green);
+    color: var(--neon-green);
+    font-size: 1.5rem;
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    cursor: pointer;
+    transition: all 0.2s;
+    box-shadow: 0 0 10px rgba(57, 255, 20, 0.2);
+}
+
+.nav-btn-main:hover {
+    background-color: rgba(57, 255, 20, 0.1);
+    box-shadow: 0 0 20px var(--neon-green);
+    transform: scale(1.1);
+}
+
+/* --- MESSAGES PLACEHOLDER --- */
+.empty-tab-message {
+    color: var(--dim-green);
+    font-style: italic;
+    text-align: center;
+    margin-top: 20%;
+    opacity: 0.7;
+}
