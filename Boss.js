@@ -424,6 +424,13 @@ window.bossManager = {
                 box-shadow: none;
             }
 
+            @media screen and (max-width: 768px) {
+                .boss-icon-btn {
+                    width: 45px;
+                    height: 45px;
+                }
+            }
+
             /* Popup d'informations */
             .boss-info-content { border-color: #ff5757; box-shadow: 0 0 30px #ff5757; }
             .boss-info-body { padding: 20px; display: flex; flex-direction: column; align-items: center; gap: 10px; }
