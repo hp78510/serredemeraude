@@ -232,7 +232,10 @@ window.bossManager = {
 
         overlay.innerHTML = `
             <div class="boss-arena-hud">
-                <div class="boss-arena-timer" id="boss-arena-timer">${this.formatTemps(this.config.dureeCombatMs)}</div>
+                <div class="boss-arena-top-row">
+                    <button class="btn-boss-quit" onclick="window.bossManager.quitterArena()">🏃 Quitter</button>
+                    <div class="boss-arena-timer" id="boss-arena-timer">${this.formatTemps(this.config.dureeCombatMs)}</div>
+                </div>
                 <div class="boss-arena-hpbar-track">
                     <div class="boss-arena-hpbar-fill" id="boss-arena-hpbar-fill" style="width:100%;"></div>
                 </div>
@@ -514,6 +517,13 @@ window.bossManager = {
                 gap: 6px;
                 z-index: 45;
             }
+            .boss-arena-top-row {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 15px;
+                width: 100%;
+            }
             .boss-arena-timer {
                 background: rgba(0,0,0,0.6);
                 border: 1px solid #ff5757;
@@ -523,6 +533,20 @@ window.bossManager = {
                 padding: 4px 14px;
                 border-radius: 15px;
                 box-shadow: 0 0 10px rgba(255, 87, 87, 0.4);
+            }
+            .btn-boss-quit {
+                background: rgba(255, 57, 57, 0.2);
+                border: 1px solid #ff3939;
+                color: #ffcccc;
+                padding: 4px 12px;
+                border-radius: 12px;
+                font-size: 0.8rem;
+                cursor: pointer;
+                transition: 0.2s;
+            }
+            .btn-boss-quit:hover {
+                background: rgba(255, 57, 57, 0.4);
+                box-shadow: 0 0 10px #ff3939;
             }
             .boss-arena-hpbar-track {
                 width: 100%;
