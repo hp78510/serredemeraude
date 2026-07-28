@@ -535,17 +535,18 @@ window.bossManager = {
                 box-shadow: 0 0 10px rgba(255, 87, 87, 0.4);
             }
             .btn-boss-quit {
-                background: rgba(255, 57, 57, 0.2);
-                border: 1px solid #ff3939;
-                color: #ffcccc;
-                padding: 4px 12px;
+                background: rgba(255, 57, 57, 0.6) !important;
+                border: 2px solid #ff3939 !important;
+                color: #fff !important;
+                padding: 8px 16px !important;
                 border-radius: 12px;
-                font-size: 0.8rem;
+                font-size: 0.9rem;
+                font-weight: bold;
                 cursor: pointer;
                 transition: 0.2s;
-                z-index: 100;
+                z-index: 9999 !important;
                 position: relative;
-                pointer-events: auto;
+                pointer-events: auto !important;
             }
             .btn-boss-quit:hover {
                 background: rgba(255, 57, 57, 0.4);

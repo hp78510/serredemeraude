@@ -265,12 +265,73 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    let attackIntervalId = null;
+    let lastAttackTime = 0;
+    let lastEvent = null; // Pour suivre la position actuelle lors du deplacement
+
     /**
      * Configure les ecouteurs
      */
     function setupEventListeners() {
         if (serreTab) {
-            serreTab.addEventListener('click', handleGlobalClick);
+            const startAttack = (e) => {
+                // Si on clique sur un bouton overlay ou un bouton de l'arene de boss, on ne declenche pas l'attaque
+                if (e.target.closest('.overlay-btn') || e.target.closest('.btn-boss-quit') || e.target.closest('button')) return;
+
+                if (e.type === 'touchstart') e.preventDefault();
+
+                lastEvent = e; // On enregistre l'evenement initial
+                handleGlobalClick(e);
+                lastAttackTime = Date.now();
+
+                if (attackIntervalId) clearInterval(attackIntervalId);
+
+                attackIntervalId = setInterval(() => {
+                    const secateurStats = window.sécateur || window.secateur;
+                    const speed = secateurStats?.attackSpeed || 500;
+                    
+                    if (Date.now() - lastAttackTime >= speed && lastEvent) {
+                        handleGlobalClick(lastEvent);
+                        lastAttackTime = Date.now();
+                    }
+                }, 50);
+            };
+
+            const moveAttack = (e) => {
+                if (attackIntervalId) {
+                    lastEvent = e; // Met a jour la position de l'attaque en cours
+                }
+            };
+
+            const stopAttack = () => {
+                if (attackIntervalId) {
+                    clearInterval(attackIntervalId);
+                    attackIntervalId = null;
+                    lastEvent = null;
+                }
+            };
+
+            // Souris
+            serreTab.addEventListener('mousedown', startAttack);
+            window.addEventListener('mousemove', moveAttack);
+            window.addEventListener('mouseup', stopAttack);
+            
+            // Tactile
+            serreTab.addEventListener('touchstart', startAttack, { passive: false });
+            serreTab.addEventListener('touchmove', (e) => {
+                e.preventDefault(); // Empeche le scroll pendant l'attaque
+                moveAttack(e);
+            }, { passive: false });
+            window.addEventListener('touchend', stopAttack);
+            window.addEventListener('touchcancel', stopAttack);
+            
+            // On garde le click pour la compatibilite (certains navigateurs)
+            // mais on s'assure qu'il ne double pas l'attaque si mousedown est gere
+            serreTab.addEventListener('click', (e) => {
+                if (Date.now() - lastAttackTime > 100) {
+                    handleGlobalClick(e);
+                }
+            });
         }
 
         if (btnRouteNext) btnRouteNext.addEventListener('click', () => {
@@ -543,8 +604,13 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!serreTab) return;
         
         const rect = serreTab.getBoundingClientRect();
-        const clickX = event.clientX - rect.left;
-        const clickY = event.clientY - rect.top;
+        
+        // Gestion des coordonnees tactiles ou souris
+        const clientX = event.touches ? event.touches[0].clientX : event.clientX;
+        const clientY = event.touches ? event.touches[0].clientY : event.clientY;
+
+        const clickX = clientX - rect.left;
+        const clickY = clientY - rect.top;
 
         const secateurStats = window.sécateur || window.secateur;
         createClickEffect(clickX, clickY, secateurStats?.radius || CONFIG.clickRadius);
