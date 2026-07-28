@@ -233,7 +233,7 @@ window.bossManager = {
         overlay.innerHTML = `
             <div class="boss-arena-hud">
                 <div class="boss-arena-top-row">
-                    <button class="btn-boss-quit" onclick="window.bossManager.quitterArena()">🏃 Quitter</button>
+                    <button class="btn-boss-quit" onclick="event.stopPropagation(); window.bossManager.quitterArena()">🏃 Quitter</button>
                     <div class="boss-arena-timer" id="boss-arena-timer">${this.formatTemps(this.config.dureeCombatMs)}</div>
                 </div>
                 <div class="boss-arena-hpbar-track">
@@ -543,6 +543,9 @@ window.bossManager = {
                 font-size: 0.8rem;
                 cursor: pointer;
                 transition: 0.2s;
+                z-index: 100;
+                position: relative;
+                pointer-events: auto;
             }
             .btn-boss-quit:hover {
                 background: rgba(255, 57, 57, 0.4);
