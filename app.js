@@ -314,8 +314,8 @@ document.addEventListener('DOMContentLoaded', () => {
      * Met a jour l'UI Route (Exporte pour Admin)
      */
     window.updateRouteUI = function() {
-        if (routeTitle) routeTitle.textContent = `Route ${window.gameState.currentRoute}`;
-        if (waveProgress) waveProgress.textContent = `Vagues completees : ${window.gameState.wavesCompleted}/${CONFIG.wavesPerRoute}`;
+        const nextCounter = document.getElementById('route-next-counter');
+        const vaguesRestantes = Math.max(0, CONFIG.wavesPerRoute - window.gameState.wavesCompleted);
 
         const db = window.PLANT_DB;
         if (db && db[window.gameState.currentRoute - 1]) {
@@ -328,23 +328,20 @@ document.addEventListener('DOMContentLoaded', () => {
         if (btnRouteNext) {
             if (window.gameState.currentRoute >= window.gameState.unlockedRoute) {
                 btnRouteNext.disabled = true;
-                btnRouteNext.style.opacity = "0.3";
-                btnRouteNext.style.cursor = "not-allowed";
+                if (nextCounter) {
+                    nextCounter.style.display = 'flex';
+                    nextCounter.textContent = vaguesRestantes;
+                }
             } else {
                 btnRouteNext.disabled = false;
-                btnRouteNext.style.opacity = "1";
-                btnRouteNext.style.cursor = "pointer";
+                if (nextCounter) {
+                    nextCounter.style.display = 'none';
+                }
             }
         }
 
         if (btnRoutePrev) {
-            if (window.gameState.currentRoute <= 1) {
-                btnRoutePrev.disabled = true;
-                btnRoutePrev.style.opacity = "0.3";
-            } else {
-                btnRoutePrev.disabled = false;
-                btnRoutePrev.style.opacity = "1";
-            }
+            btnRoutePrev.disabled = (window.gameState.currentRoute <= 1);
         }
     };
 
