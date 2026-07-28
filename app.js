@@ -99,6 +99,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 boutique: window.gameState.boutique || null
             };
             localStorage.setItem('laSerreEmeraude_save', JSON.stringify(dataToSave));
+
+            // NOUVEAU : Progression Hors-Ligne - on note l'heure a chaque sauvegarde
+            if (window.offlineManager) {
+                window.offlineManager.enregistrerTimestamp();
+            }
         } catch (e) {
             console.error("Erreur lors de la sauvegarde:", e);
         }
@@ -200,6 +205,16 @@ document.addEventListener('DOMContentLoaded', () => {
      * Initialise l'interface
      */
     function initGame() {
+        // 0. Progression Hors-Ligne : CAPTURER le temps d'absence EN TOUT PREMIER,
+        // avant chargerProgression() et avant toute routine d'initialisation.
+        // CRITIQUE : la reactivation des symbiotes (etape 2quater plus bas) declenche
+        // elle-meme une sauvegarde (sauvegarderEtat() -> sauvegarderProgression()), qui
+        // ecraserait le timestamp d'absence AVANT qu'on ait pu calculer les gains, si on
+        // ne le figeait pas maintenant.
+        if (window.offlineManager) {
+            window.offlineManager.capturerAbsence();
+        }
+
         // 1. Charger la progression avant tout
         chargerProgression();
 
@@ -233,7 +248,13 @@ document.addEventListener('DOMContentLoaded', () => {
             window.reactiverSymbiotesSauvegardes();
         }
 
-        // 2quinquies. Initialiser l'UI des Capsules Organiques Scellees
+        // 2quinquies. Progression Hors-Ligne : calcule et applique les gains d'absence.
+        // Doit venir APRES la reactivation des symbiotes (on a besoin de leurs stats reelles en direct).
+        if (window.offlineManager) {
+            window.offlineManager.calculerEtAppliquerProgression();
+        }
+
+        // 2sexies. Initialiser l'UI des Capsules Organiques Scellees
         if (window.capsulesManager) {
             window.capsulesManager.init();
         }
@@ -263,6 +284,18 @@ document.addEventListener('DOMContentLoaded', () => {
         if (window.refreshSymbiotesMenu) {
             window.refreshSymbiotesMenu();
         }
+
+        // 8. Progression Hors-Ligne : capture aussi les fermetures d'onglet/app.
+        // pagehide couvre la fermeture (mobile/tablette/desktop), visibilitychange couvre
+        // le passage en arriere-plan (ex: on quitte l'app sans la fermer completement).
+        window.addEventListener('pagehide', () => {
+            if (window.offlineManager) window.offlineManager.enregistrerTimestamp();
+        });
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'hidden' && window.offlineManager) {
+                window.offlineManager.enregistrerTimestamp();
+            }
+        });
     }
 
     let attackIntervalId = null;
@@ -548,6 +581,92 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     /**
+     * Liste des selecteurs CSS des elements "boutons overlay" a eviter lors du spawn
+     * des plantes (flechettes de route, menu, stats, parametres, jauge des capsules...).
+     * Centralise ici pour etre facile a completer si de nouveaux boutons flottants
+     * sont ajoutes plus tard au-dessus de la zone de jeu.
+     */
+    const SELECTEURS_ZONES_EXCLUES = [
+        '#game-controls-overlay',   // Boss + fleches de route + AUTO (colonne droite)
+        '.bottom-nav-overlay',      // Menu / Stats / Parametres (bas, centre)
+        '#capsule-gauge-container', // Jauge verticale des Capsules (colonne gauche)
+        '#capsule-bottom-btn'       // Bouton rond des Capsules (bas)
+    ];
+
+    /**
+     * Calcule les rectangles (en px, relatifs au conteneur de jeu) a eviter lors du
+     * placement d'une plante, avec une marge de securite pour laisser de la place a
+     * l'image de la plante ET sa barre de vie (qui depasse de ~15px au-dessus).
+     */
+    function getZonesExclues(containerRect) {
+        const margeSecurite = 25; // px de marge autour de chaque bouton
+        const zones = [];
+
+        SELECTEURS_ZONES_EXCLUES.forEach(selecteur => {
+            const el = document.querySelector(selecteur);
+            if (!el) return;
+            const r = el.getBoundingClientRect();
+            if (r.width === 0 && r.height === 0) return; // pas encore rendu / masque
+
+            zones.push({
+                left: (r.left - containerRect.left) - margeSecurite,
+                top: (r.top - containerRect.top) - margeSecurite,
+                right: (r.right - containerRect.left) + margeSecurite,
+                bottom: (r.bottom - containerRect.top) + margeSecurite
+            });
+        });
+
+        return zones;
+    }
+
+    function rectanglesSeChevauchent(a, b) {
+        return !(a.right < b.left || a.left > b.right || a.bottom < b.top || a.top > b.bottom);
+    }
+
+    /**
+     * Tire une position (en %) pour une nouvelle plante en evitant les zones occupees
+     * par les boutons overlay. Retente plusieurs fois avant de se rabattre sur une
+     * position de secours (centre-gauche, generalement libre sur tous les formats).
+     */
+    function tirerPositionPlanteValide(containerRect) {
+        const largeurPlante = 64;
+        const hauteurPlante = 64;
+        const depassementBarreVie = 15; // la barre de vie deborde d'environ 15px au-dessus de l'image
+        const margeBordure = 8; // marge minimale par rapport aux bords du conteneur
+
+        const zonesExclues = getZonesExclues(containerRect);
+
+        const largeurUtile = Math.max(20, containerRect.width - largeurPlante - margeBordure * 2);
+        const hauteurUtile = Math.max(20, containerRect.height - hauteurPlante - depassementBarreVie - margeBordure * 2);
+
+        const maxTentatives = 40;
+        for (let i = 0; i < maxTentatives; i++) {
+            const x = margeBordure + Math.random() * largeurUtile;
+            const y = margeBordure + depassementBarreVie + Math.random() * hauteurUtile;
+
+            const rectPlante = {
+                left: x,
+                top: y - depassementBarreVie,
+                right: x + largeurPlante,
+                bottom: y + hauteurPlante
+            };
+
+            const collision = zonesExclues.some(zone => rectanglesSeChevauchent(rectPlante, zone));
+            if (!collision) {
+                return {
+                    xPercent: (x / containerRect.width) * 100,
+                    yPercent: (y / containerRect.height) * 100
+                };
+            }
+        }
+
+        // Secours : si aucune position libre n'a ete trouvee apres plusieurs tentatives
+        // (ecran tres petit / beaucoup de zones exclues), on retombe sur une zone
+        // generalement toujours degagee (centre-gauche de l'ecran).
+        return { xPercent: 25, yPercent: 35 };
+    }
+
+    /**
      * Cree une plante individuelle avec barre de vie
      */
     function createPlant(template) {
@@ -569,14 +688,16 @@ document.addEventListener('DOMContentLoaded', () => {
         healthBarFill.style.width = '100%';
         healthBarContainer.appendChild(healthBarFill);
         plantEl.appendChild(healthBarContainer);
-        
-        // Exclusion de la zone droite (où se trouvent les boutons en overlay)
-        // On limite le spawn horizontal à 80% au lieu de 90%
-        const randomX = Math.floor(Math.random() * 75) + 5; 
-        const randomY = Math.floor(Math.random() * 80) + 10;
-        
-        plantEl.style.left = `${randomX}%`;
-        plantEl.style.top = `${randomY}%`;
+
+        // Position calculee en evitant activement les zones occupees par les boutons
+        // overlay (route, menu, stats, parametres, capsules...) - remplace l'ancien
+        // positionnement purement aleatoire qui laissait les plantes spawner derriere
+        // les boutons sur les petits ecrans (mobile).
+        const containerRect = serreTab ? serreTab.getBoundingClientRect() : { left: 0, top: 0, width: 300, height: 500 };
+        const position = tirerPositionPlanteValide(containerRect);
+
+        plantEl.style.left = `${position.xPercent}%`;
+        plantEl.style.top = `${position.yPercent}%`;
 
         const plantData = {
             id: Date.now() + Math.random(),
@@ -592,6 +713,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     /**
+
      * Gere le clic global (Systeme AoE avec Secateur)
      */
     function handleGlobalClick(event) {

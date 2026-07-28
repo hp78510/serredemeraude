@@ -40,19 +40,23 @@ window.afficherToast = function(message, type) {
                 display: flex;
                 flex-direction: column;
                 align-items: center;
-                gap: 8px;
+                gap: 10px;
                 pointer-events: none;
+                width: 90%;
+                max-width: 420px;
             }
             .game-toast {
                 background: var(--panel-bg);
-                border: 1px solid #ff3939;
+                border: 2px solid #ff3939;
                 color: #ffcccc;
-                padding: 10px 18px;
-                border-radius: 6px;
+                padding: 16px 26px;
+                border-radius: 8px;
                 font-family: 'Courier New', monospace;
-                font-size: 0.85rem;
+                font-size: 1.15rem;
+                line-height: 1.4;
                 font-weight: bold;
-                box-shadow: 0 0 15px rgba(255, 57, 57, 0.4);
+                text-align: center;
+                box-shadow: 0 0 20px rgba(255, 57, 57, 0.5);
                 opacity: 0;
                 transform: translateY(-10px);
                 transition: opacity 0.25s ease, transform 0.25s ease;
@@ -60,7 +64,7 @@ window.afficherToast = function(message, type) {
             .game-toast.toast-info {
                 border-color: var(--neon-green);
                 color: var(--text-color);
-                box-shadow: 0 0 15px rgba(57, 255, 20, 0.4);
+                box-shadow: 0 0 20px rgba(57, 255, 20, 0.5);
             }
             .game-toast.toast-visible {
                 opacity: 1;
@@ -80,7 +84,7 @@ window.afficherToast = function(message, type) {
     setTimeout(() => {
         toast.classList.remove('toast-visible');
         setTimeout(() => toast.remove(), 300);
-    }, 2200);
+    }, 3400);
 };
 
 window.acheterSymbioteDepuisMenu = function(type) {

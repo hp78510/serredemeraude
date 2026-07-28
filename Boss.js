@@ -67,6 +67,8 @@ window.bossManager = {
         if (!btn || !badge) return;
 
         const restant = this.getTempsRestantCooldown();
+        const estPret = restant <= 0 && !this.enCombat;
+
         if (restant > 0 && !this.enCombat) {
             btn.classList.add('boss-icon-cooldown-actif');
             badge.style.display = 'flex';
@@ -75,6 +77,9 @@ window.bossManager = {
             btn.classList.remove('boss-icon-cooldown-actif');
             badge.style.display = 'none';
         }
+
+        // Animation d'appel : pulse lorsque le boss est disponible (hors cooldown, hors combat)
+        btn.classList.toggle('boss-pret', estPret);
     },
 
     // --- UI : POPUP D'INFORMATIONS AVANT COMBAT ---
@@ -142,6 +147,10 @@ window.bossManager = {
         this.pvMax = this.getPvPourNiveau(window.gameState.boss.niveau);
         this.pvActuel = this.pvMax;
         this.finCombatTimestamp = Date.now() + this.config.dureeCombatMs;
+        this.combatDebutTimestamp = Date.now();
+
+        // Suivi des degats infliges pour le compteur de DPS (fenetre glissante)
+        this._degatsRecents = [];
 
         // Masquer les symbiotes actifs pendant le combat (seul le joueur peut infliger des degats)
         if (window.symbiotesManager && Array.isArray(window.symbiotesManager.actifs)) {
@@ -178,12 +187,39 @@ window.bossManager = {
         const damage = window.calculerDegatsSecateur ? window.calculerDegatsSecateur() : 1;
         this.pvActuel = Math.max(0, this.pvActuel - damage);
 
+        // Suivi pour le compteur de DPS (fenetre glissante)
+        this._degatsRecents.push({ t: Date.now(), montant: damage });
+
         this.afficherDegatsFlottants(damage, event);
         this.mettreAJourUICombat(Math.max(0, this.finCombatTimestamp - Date.now()));
 
         if (this.pvActuel <= 0) {
             this.terminerCombat(true);
         }
+    },
+
+    /**
+     * Calcule le DPS "en direct" sur une fenetre glissante de 2 secondes, a partir
+     * des coups recents enregistres dans gererClic(). Retombe naturellement a 0
+     * si aucun coup n'a ete porte depuis 2 secondes (feedback immediat pour le joueur).
+     */
+    calculerDpsActuel: function() {
+        const fenetreSec = 2;
+        const maintenant = Date.now();
+
+        // Nettoyage des entrees trop anciennes
+        this._degatsRecents = (this._degatsRecents || []).filter(e => maintenant - e.t <= fenetreSec * 1000);
+
+        if (this._degatsRecents.length === 0) return 0;
+
+        const sommeDegats = this._degatsRecents.reduce((sum, e) => sum + e.montant, 0);
+
+        // Si le combat vient de commencer depuis moins de 2s, on divise par le temps
+        // reellement ecoule plutot que par la fenetre complete (evite de sous-estimer le DPS)
+        const tempsEcouleCombat = (maintenant - (this.combatDebutTimestamp || maintenant)) / 1000;
+        const diviseur = Math.max(0.001, Math.min(fenetreSec, tempsEcouleCombat));
+
+        return Math.floor(sommeDegats / diviseur);
     },
 
     terminerCombat: function(victoire) {
@@ -240,6 +276,7 @@ window.bossManager = {
                     <div class="boss-arena-hpbar-fill" id="boss-arena-hpbar-fill" style="width:100%;"></div>
                 </div>
                 <div class="boss-arena-hp-text" id="boss-arena-hp-text">${this.pvActuel.toLocaleString()} / ${this.pvMax.toLocaleString()} PV</div>
+                <div class="boss-arena-dps" id="boss-arena-dps">⚡ 0 DPS</div>
             </div>
             <img src="${this.config.image}" class="boss-arena-image" id="boss-arena-image" alt="Boss" onerror="this.style.display='none'">
             <div id="boss-arena-result"></div>
@@ -252,6 +289,7 @@ window.bossManager = {
         const timerEl = document.getElementById('boss-arena-timer');
         const fillEl = document.getElementById('boss-arena-hpbar-fill');
         const hpTextEl = document.getElementById('boss-arena-hp-text');
+        const dpsEl = document.getElementById('boss-arena-dps');
 
         if (timerEl) timerEl.textContent = this.formatTemps(tempsRestantMs);
         if (fillEl) {
@@ -260,6 +298,7 @@ window.bossManager = {
             fillEl.style.backgroundColor = pourcentage < 25 ? '#ff3939' : (pourcentage < 55 ? '#ffff39' : '');
         }
         if (hpTextEl) hpTextEl.textContent = `${Math.max(0, this.pvActuel).toLocaleString()} / ${this.pvMax.toLocaleString()} PV`;
+        if (dpsEl) dpsEl.textContent = `⚡ ${this.calculerDpsActuel().toLocaleString()} DPS`;
     },
 
     afficherResultatCombat: function(victoire) {
@@ -427,6 +466,21 @@ window.bossManager = {
                 box-shadow: none;
             }
 
+            /* Animation d'appel : signale que le boss est disponible (hors cooldown, hors combat) */
+            .boss-icon-btn.boss-pret {
+                animation: bossPretPulse 1.4s ease-in-out infinite;
+            }
+            @keyframes bossPretPulse {
+                0%, 100% {
+                    box-shadow: 0 0 12px rgba(255, 87, 87, 0.4);
+                    transform: scale(1);
+                }
+                50% {
+                    box-shadow: 0 0 26px rgba(255, 87, 87, 0.95), 0 0 45px rgba(255, 87, 87, 0.5);
+                    transform: scale(1.08);
+                }
+            }
+
             @media screen and (max-width: 768px) {
                 .boss-icon-btn {
                     width: 45px;
@@ -573,6 +627,16 @@ window.bossManager = {
                 font-weight: bold;
                 padding: 2px 10px;
                 border-radius: 10px;
+            }
+            .boss-arena-dps {
+                background: rgba(0,0,0,0.55);
+                border: 1px solid #ffb347;
+                color: #ffb347;
+                font-size: 0.85rem;
+                font-weight: bold;
+                padding: 3px 14px;
+                border-radius: 10px;
+                box-shadow: 0 0 8px rgba(255, 179, 71, 0.4);
             }
             .boss-arena-image {
                 width: 220px;
