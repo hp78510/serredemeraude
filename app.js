@@ -509,8 +509,10 @@ document.addEventListener('DOMContentLoaded', () => {
         healthBarContainer.appendChild(healthBarFill);
         plantEl.appendChild(healthBarContainer);
         
-        const randomX = Math.floor(Math.random() * 85) + 5;
-        const randomY = Math.floor(Math.random() * 85) + 5;
+        // Exclusion de la zone droite (où se trouvent les boutons en overlay)
+        // On limite le spawn horizontal à 80% au lieu de 90%
+        const randomX = Math.floor(Math.random() * 75) + 5; 
+        const randomY = Math.floor(Math.random() * 80) + 10;
         
         plantEl.style.left = `${randomX}%`;
         plantEl.style.top = `${randomY}%`;
