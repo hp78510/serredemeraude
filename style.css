@@ -29,7 +29,7 @@ body {
 /* --- EN-TETE & RESSOURCES --- */
 header {
     text-align: center;
-    padding: 2px 5px !important; /* Padding ultra réduit */
+    padding: 4px 8px !important;
     border-bottom: 1px solid var(--dim-green) !important;
     box-shadow: 0 0 5px var(--dim-green) !important;
     z-index: 10;
@@ -38,11 +38,26 @@ header {
 }
 
 h1 {
-    font-size: 0.8rem !important; /* Titre minuscule */
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    text-shadow: 0 0 2px var(--neon-green);
-    margin-bottom: 2px !important;
+    display: none !important; /* Titre supprime pour gagner de la place */
+}
+
+.bottom-nav-overlay {
+    position: absolute;
+    bottom: 12px;
+    left: 50%;
+    transform: translateX(-15px); /* Ajustement pour centrer le groupe (Item + Nav) */
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    z-index: 100;
+    pointer-events: none;
+}
+
+.nav-icon-btn {
+    pointer-events: auto;
+    width: 38px !important;
+    height: 38px !important;
+    font-size: 1rem !important;
 }
 
 /* Conteneur dynamique des ressources */
@@ -393,75 +408,7 @@ h1 {
     }
 }
 
-/* --- BARRE DE NAVIGATION BAS --- */
-nav {
-    display: flex;
-    background-color: var(--panel-bg);
-    border-top: 2px solid var(--dim-green);
-    height: 70px;
-    z-index: 20;
-    flex-shrink: 0;
-}
-
-.nav-item {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    color: var(--dim-green);
-    font-size: 0.75rem;
-    cursor: pointer;
-    transition: color 0.3s, text-shadow 0.3s;
-}
-
-.nav-item span {
-    font-size: 1.4rem;
-    margin-bottom: 4px;
-}
-
-.nav-item.active-tab {
-    color: var(--neon-green);
-    text-shadow: 0 0 8px var(--neon-green);
-}
-
-.nav-item:hover {
-    color: #aaffaa;
-}
-
-/* --- NAVIGATION MINIMALE --- */
-.nav-minimal {
-    display: flex;
-    justify-content: center;
-    gap: 20px;
-    background-color: var(--panel-bg);
-    border-top: 2px solid var(--dim-green);
-    height: 60px;
-    padding-bottom: env(safe-area-inset-bottom); /* Support pour les barres d'iPhone/Android */
-    box-sizing: content-box;
-    align-items: center;
-    z-index: 100;
-    flex-shrink: 0;
-}
-
-.nav-btn-main {
-    background: transparent;
-    border: 2px solid var(--neon-green);
-    color: var(--neon-green);
-    font-size: 1.5rem;
-    width: 50px;
-    height: 50px;
-    border-radius: 50%;
-    cursor: pointer;
-    transition: all 0.2s;
-    box-shadow: 0 0 10px rgba(57, 255, 20, 0.2);
-}
-
-.nav-btn-main:hover {
-    background-color: rgba(57, 255, 20, 0.1);
-    box-shadow: 0 0 20px var(--neon-green);
-    transform: scale(1.1);
-}
+/* Barre de navigation bas supprimee */
 
 /* --- MESSAGES PLACEHOLDER --- */
 .empty-tab-message {

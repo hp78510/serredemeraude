@@ -102,8 +102,6 @@
 
     <!-- En-tete : Titre et Liste des Ressources -->
     <header>
-        <h1>La Serre d’Emeraude</h1>
-
         <div id="xp-bar-container" class="xp-bar-container">
             <span id="niveau-label" class="niveau-label">Niveau 1</span>
             <div class="xp-bar-track">
@@ -196,25 +194,16 @@
             </button>
         </div>
 
+        <!-- Navigation Basse en Overlay -->
+        <div class="bottom-nav-overlay">
+            <button id="btn-menu-global" class="overlay-btn nav-icon-btn" onclick="window.ouvrirMenuGlobal()" title="Menu">💠</button>
+            <button id="btn-stats" class="overlay-btn nav-icon-btn" onclick="window.afficherStatsSecateur()" title="Stats">📈</button>
+            <button id="btn-parametres" class="overlay-btn nav-icon-btn" onclick="window.ouvrirParametres()" title="Paramètres">⚙️</button>
+        </div>
+
     </main>
 
-    <!-- Barre de navigation inferieure simplifiee -->
-    <nav class="nav-minimal">
-        <!-- Bouton Menu Global -->
-        <button id="btn-menu-global" class="nav-btn-main" onclick="window.ouvrirMenuGlobal()">
-            💠
-        </button>
-        
-        <!-- NOUVEAU : Bouton Statistiques -->
-        <button id="btn-stats" class="nav-btn-main" onclick="window.afficherStatsSecateur()">
-            📈
-        </button>
-
-        <!-- Bouton Parametres -->
-        <button id="btn-parametres" class="nav-btn-main" onclick="window.ouvrirParametres()">
-            ⚙️
-        </button>
-    </nav>
+    <!-- Barre de navigation inferieure supprimee -->
 
 <!-- Scripts -->
     <!-- 1. Fichiers de donnees et initialisation (Base de tout) -->
