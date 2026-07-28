@@ -232,7 +232,38 @@ window.bossManager = {
             this._timerInterval = null;
         }
 
+        // Pénalité de défaite : -50% des plantes récoltées
+        if (!victoire) {
+            this.appliquerPenaliteDefaite();
+        }
+
         this.afficherResultatCombat(victoire);
+    },
+
+    appliquerPenaliteDefaite: function() {
+        if (!window.gameState || !window.gameState.inventairePlantes) return;
+        
+        const inventaire = window.gameState.inventairePlantes;
+        let plantesPerdues = 0;
+
+        Object.keys(inventaire).forEach(nom => {
+            const quantite = inventaire[nom];
+            if (quantite > 0) {
+                const perte = Math.floor(quantite * 0.5);
+                inventaire[nom] -= perte;
+                plantesPerdues += perte;
+                if (inventaire[nom] <= 0) delete inventaire[nom];
+            }
+        });
+
+        if (plantesPerdues > 0) {
+            if (window.afficherToast) {
+                window.afficherToast(`💀 Défaite ! Vous avez perdu ${plantesPerdues.toLocaleString()} plantes.`, 'error');
+            }
+            window.sauvegarderProgression();
+            if (window.updateHeaderUI) window.updateHeaderUI();
+            if (window.updateInventoryUI) window.updateInventoryUI();
+        }
     },
 
     recolterRecompense: function() {
@@ -262,15 +293,23 @@ window.bossManager = {
         const serreTab = document.getElementById('tab-serre');
         if (!serreTab) return;
 
+        // Masquer les boutons de navigation (fleches et auto)
+        const btnNext = document.getElementById('btn-route-next');
+        const btnPrev = document.getElementById('btn-route-prev');
+        const btnAuto = document.getElementById('btn-auto-route');
+        if (btnNext) btnNext.style.display = 'none';
+        if (btnPrev) btnPrev.style.display = 'none';
+        if (btnAuto) btnAuto.style.display = 'none';
+
         const overlay = document.createElement('div');
         overlay.id = 'boss-arena-overlay';
         overlay.style.backgroundImage = `url('${this.config.fond}')`;
 
         overlay.innerHTML = `
             <div class="boss-arena-hud">
-                <div class="boss-arena-top-row">
-                    <button class="btn-boss-quit" onclick="event.stopPropagation(); window.bossManager.quitterArena()">🏃 Quitter</button>
-                    <div class="boss-arena-timer" id="boss-arena-timer">${this.formatTemps(this.config.dureeCombatMs)}</div>
+                <div class="boss-arena-top-row" style="display:flex; justify-content:space-between; align-items:center; width:100%; margin-bottom:10px;">
+                    <button id="btn-quit-boss-direct" class="btn-boss-quit">🏃 Quitter</button>
+                    <div class="boss-arena-timer" id="boss-arena-timer" style="margin:0;">${this.formatTemps(this.config.dureeCombatMs)}</div>
                 </div>
                 <div class="boss-arena-hpbar-track">
                     <div class="boss-arena-hpbar-fill" id="boss-arena-hpbar-fill" style="width:100%;"></div>
@@ -283,6 +322,18 @@ window.bossManager = {
         `;
 
         serreTab.appendChild(overlay);
+
+        // Gestionnaire d'evenement direct pour le bouton quitter
+        setTimeout(() => {
+            const btnQuit = document.getElementById('btn-quit-boss-direct');
+            if (btnQuit) {
+                btnQuit.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    this.quitterArena();
+                }, true); // Capture mode pour priorite absolue
+            }
+        }, 0);
     },
 
     mettreAJourUICombat: function(tempsRestantMs) {
@@ -327,6 +378,14 @@ window.bossManager = {
     fermerArenaCombat: function() {
         const overlay = document.getElementById('boss-arena-overlay');
         if (overlay) overlay.remove();
+
+        // Re-afficher les boutons de navigation
+        const btnNext = document.getElementById('btn-route-next');
+        const btnPrev = document.getElementById('btn-route-prev');
+        const btnAuto = document.getElementById('btn-auto-route');
+        if (btnNext) btnNext.style.display = 'flex';
+        if (btnPrev) btnPrev.style.display = 'flex';
+        if (btnAuto) btnAuto.style.display = 'flex';
 
         // Reafficher les symbiotes actifs
         if (window.symbiotesManager && Array.isArray(window.symbiotesManager.actifs)) {

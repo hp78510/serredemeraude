@@ -131,7 +131,7 @@ window.capsulesManager = {
 
         if (capsulesGagnees > 0) {
             if (window.afficherToast) {
-                window.afficherToast(`📦 ${capsulesGagnees > 1 ? capsulesGagnees + ' Capsules obtenues !' : 'Capsule Organique obtenue !'}`, 'info');
+                window.afficherToast(`📦 +${capsulesGagnees} Capsule${capsulesGagnees > 1 ? 's' : ''} Organique${capsulesGagnees > 1 ? 's' : ''} !`, 'info');
             }
             window.sauvegarderProgression();
             this.refreshMenuUI();
