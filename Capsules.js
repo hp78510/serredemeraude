@@ -467,7 +467,7 @@ window.capsulesManager = {
                 position: absolute;
                 bottom: 12px;
                 left: 50%;
-                transform: translateX(-50%);
+                transform: translateX(-110px); /* Positionne a gauche des boutons nav */
                 width: 46px;
                 height: 46px;
                 border-radius: 50%;
