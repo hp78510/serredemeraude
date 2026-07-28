@@ -174,31 +174,27 @@
             </div>
         </section>
 
-        <!-- Colonne Droite : Navigation des Routes -->
-        <aside id="route-nav" class="route-column">
+        <!-- Commandes de Jeu en Overlay (Directement sur la Serre) -->
+        <div id="game-controls-overlay" class="game-controls-overlay">
             <!-- Icone de combat contre le Boss -->
-            <button id="btn-boss-fight" class="boss-icon-btn" title="Combattre le Cœur de la Serre d'Émeraude" onclick="window.ouvrirBoss()">
+            <button id="btn-boss-fight" class="boss-icon-btn overlay-btn" title="Combattre le Cœur de la Serre d'Émeraude" onclick="window.ouvrirBoss()">
                 <img src="./images/boss/Coeur de la Serre d’Emeraude.png" alt="Boss" onerror="this.style.display='none'">
                 <div id="boss-icon-cooldown" class="boss-icon-cooldown"></div>
             </button>
 
-            <button id="btn-route-next" class="route-btn" title="Route Suivante">
+            <button id="btn-route-next" class="route-btn overlay-btn" title="Route Suivante">
                 ▲
+                <span id="route-next-counter" class="route-next-counter"></span>
             </button>
             
-            <div class="route-info">
-                <h2 id="route-title">Route 1</h2>
-                <p id="wave-progress">Vagues: 0/10</p>
-            </div>
-
-            <button id="btn-route-prev" class="route-btn" title="Route Precedente">
+            <button id="btn-route-prev" class="route-btn overlay-btn" title="Route Precedente">
                 ▼
             </button>
 
-            <button id="btn-auto-route" class="auto-route-btn" title="Monte automatiquement de route des qu'elle est debloquee">
+            <button id="btn-auto-route" class="auto-route-btn overlay-btn" title="Monte automatiquement de route des qu'elle est debloquee">
                 AUTO
             </button>
-        </aside>
+        </div>
 
     </main>
 

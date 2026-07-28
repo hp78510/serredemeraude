@@ -207,121 +207,92 @@ h1 {
     overflow: hidden;
 }
 
-/* Colonne Droite : Navigation des Routes */
-.route-column {
-    width: 250px; /* Largeur fixe pour le panneau lateral */
-    background-color: var(--panel-bg);
+/* --- COMMANDES EN OVERLAY --- */
+.game-controls-overlay {
+    position: absolute;
+    right: 15px;
+    top: 50%;
+    transform: translateY(-50%);
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: center;
-    padding: 20px;
-    box-shadow: -5px 0 15px rgba(0,0,0,0.5);
-    z-index: 5;
-    transition: width 0.3s ease;
+    gap: 15px;
+    z-index: 100;
+    pointer-events: none; /* Laisse passer les clics sauf sur les boutons */
 }
 
-/* --- RESPONSIVE MOBILE --- */
-@media screen and (max-width: 768px) {
-    .route-column {
-        width: 80px; /* Reduit significativement sur mobile */
-        padding: 10px 5px;
-    }
-
-    .route-info h2 {
-        font-size: 1rem;
-    }
-
-    .route-info p {
-        font-size: 0.7rem;
-    }
-
-    .route-btn {
-        width: 45px;
-        height: 45px;
-        font-size: 1.2rem;
-    }
-
-    .auto-route-btn {
-        font-size: 0.6rem;
-        padding: 5px 10px;
-    }
-}
-
-/* Style des elements dans le panneau des routes */
-.route-info {
-    text-align: center;
-    margin: 20px 0;
-}
-
-.route-info h2 {
-    color: var(--neon-green);
-    text-shadow: 0 0 8px var(--neon-green);
-    margin-bottom: 5px;
-    font-size: 1.8rem;
-}
-
-.route-info p {
-    color: var(--text-color);
-    opacity: 0.8;
-    font-size: 1rem;
-}
-
-.route-btn {
-    background: transparent;
-    border: 2px solid var(--dim-green);
-    color: var(--neon-green);
-    font-size: 2rem;
-    width: 60px;
-    height: 60px;
-    border-radius: 50%;
+.overlay-btn {
+    pointer-events: auto; /* Active les clics sur les boutons */
+    background: rgba(13, 20, 16, 0.8) !important;
+    border: 1px solid var(--dim-green) !important;
+    box-shadow: 0 0 10px rgba(0,0,0,0.5) !important;
+    width: 45px !important;
+    height: 45px !important;
+    border-radius: 50% !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
     cursor: pointer;
     transition: all 0.2s;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    box-shadow: 0 0 10px rgba(57, 255, 20, 0.1);
+    position: relative;
 }
 
-.route-btn:hover:not(:disabled) {
-    border-color: var(--neon-green);
-    box-shadow: 0 0 20px var(--neon-green);
+.overlay-btn:hover:not(:disabled) {
+    border-color: var(--neon-green) !important;
+    box-shadow: 0 0 15px var(--neon-green) !important;
     transform: scale(1.1);
 }
 
-.route-btn:disabled {
-    opacity: 0.3;
-    cursor: not-allowed;
-    border-color: var(--dim-green);
-    color: var(--dim-green);
-}
-
-/* --- BOUTON AUTO (montee automatique de route) --- */
-.auto-route-btn {
-    margin-top: 15px;
-    background: transparent;
-    border: 2px solid var(--dim-green);
-    color: var(--dim-green);
-    font-size: 0.75rem;
-    font-weight: bold;
-    letter-spacing: 1px;
-    padding: 8px 16px;
-    border-radius: 20px;
-    cursor: pointer;
-    transition: all 0.25s;
-}
-
-.auto-route-btn:hover {
-    border-color: var(--neon-green);
+.route-btn {
     color: var(--neon-green);
+    font-size: 1.2rem;
+}
+
+.route-btn:disabled {
+    color: #555 !important;
+    border-color: #333 !important;
+    filter: grayscale(1);
+    cursor: not-allowed;
+}
+
+.route-next-counter {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.7rem;
+    font-weight: bold;
+    color: #ffb347;
+    background: rgba(0,0,0,0.4);
+    border-radius: 50%;
+}
+
+.auto-route-btn {
+    color: var(--dim-green);
+    font-size: 0.6rem;
+    font-weight: bold;
+    border-radius: 20px !important;
+    height: 30px !important;
+    width: 55px !important;
 }
 
 .auto-route-btn.active {
-    background: var(--neon-green);
-    border-color: var(--neon-green);
-    color: #000;
-    box-shadow: 0 0 15px var(--neon-green), 0 0 30px rgba(57, 255, 20, 0.4);
+    background: var(--neon-green) !important;
+    color: #000 !important;
+    border-color: var(--neon-green) !important;
     animation: autoPulse 1.5s ease-in-out infinite;
+}
+
+@media screen and (max-width: 768px) {
+    .game-controls-overlay {
+        right: 10px;
+        gap: 10px;
+    }
+    .overlay-btn {
+        width: 40px !important;
+        height: 40px !important;
+    }
 }
 
 @keyframes autoPulse {
