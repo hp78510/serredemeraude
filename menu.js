@@ -33,7 +33,7 @@ window.afficherToast = function(message, type) {
         style.textContent = `
             #toast-container {
                 position: fixed;
-                top: 10px;
+                top: 20px;
                 left: 50%;
                 transform: translateX(-50%);
                 z-index: 3000;
@@ -43,31 +43,31 @@ window.afficherToast = function(message, type) {
                 gap: 8px;
                 pointer-events: none;
                 width: 90%;
-                max-width: 320px;
+                max-width: 360px;
             }
             .game-toast {
-                background: rgba(13, 20, 16, 0.95);
-                border: 1px solid #ff3939;
-                color: #ff3939;
-                padding: 8px 16px;
-                border-radius: 6px;
+                background: var(--panel-bg);
+                border: 2px solid #ff3939;
+                color: #ffcccc;
+                padding: 11px 18px;
+                border-radius: 8px;
                 font-family: 'Courier New', monospace;
                 font-size: 0.9rem;
-                line-height: 1.2;
+                line-height: 1.35;
                 font-weight: bold;
                 text-align: center;
-                box-shadow: 0 0 10px rgba(255, 57, 57, 0.3);
+                box-shadow: 0 0 18px rgba(255, 57, 57, 0.5);
                 opacity: 0;
-                transform: translateY(-5px);
-                transition: opacity 0.2s ease, transform 0.2s ease;
+                transform: translateY(-10px);
+                transition: opacity 0.25s ease, transform 0.25s ease;
                 pointer-events: auto;
                 cursor: pointer;
-                user-select: none;
             }
+            .game-toast:active { transform: scale(0.97); }
             .game-toast.toast-info {
                 border-color: var(--neon-green);
                 color: var(--text-color);
-                box-shadow: 0 0 20px rgba(57, 255, 20, 0.5);
+                box-shadow: 0 0 18px rgba(57, 255, 20, 0.5);
             }
             .game-toast.toast-visible {
                 opacity: 1;
@@ -79,21 +79,28 @@ window.afficherToast = function(message, type) {
 
     const toast = document.createElement('div');
     toast.className = `game-toast ${type === 'info' ? 'toast-info' : ''}`;
-    toast.innerHTML = message;
+    toast.textContent = message;
+    toast.title = 'Cliquer pour fermer';
     container.appendChild(toast);
 
-    const closeToast = () => {
-        toast.classList.remove('toast-visible');
-        setTimeout(() => toast.remove(), 200);
-    };
+    let timeoutAutoHide = null;
+    let timeoutSuppression = null;
 
-    toast.onclick = closeToast;
+    // Ferme immediatement le toast au clic/tap (au lieu d'attendre le timeout automatique)
+    const fermerMaintenant = () => {
+        if (timeoutAutoHide) clearTimeout(timeoutAutoHide);
+        if (timeoutSuppression) clearTimeout(timeoutSuppression);
+        toast.classList.remove('toast-visible');
+        setTimeout(() => toast.remove(), 300);
+    };
+    toast.addEventListener('click', fermerMaintenant);
 
     requestAnimationFrame(() => toast.classList.add('toast-visible'));
 
-    setTimeout(() => {
-        if (toast.parentNode) closeToast();
-    }, 3000);
+    timeoutAutoHide = setTimeout(() => {
+        toast.classList.remove('toast-visible');
+        timeoutSuppression = setTimeout(() => toast.remove(), 300);
+    }, 3400);
 };
 
 window.acheterSymbioteDepuisMenu = function(type) {
@@ -324,6 +331,7 @@ function creerOverlayMenu() {
                         <button class="menu-action-btn" onclick="window.ouvrirParametres(); window.fermerMenuGlobal();"><span class="icon">⚙️</span> Parametres</button>
                         <button class="menu-action-btn" onclick="window.afficherStats(); window.fermerMenuGlobal();"><span class="icon">📊</span> Stats</button>
                         <button class="menu-action-btn highlight-btn" onclick="window.ouvrirBoutique(); window.fermerMenuGlobal();"><span class="icon">🛒</span> Boutique</button>
+                        <button class="menu-action-btn highlight-btn" onclick="window.capsulesManager.ouvrirMenuCapsules(); window.fermerMenuGlobal();"><span class="icon">📦</span> Capsules</button>
                         <button class="menu-action-btn admin-btn-style" onclick="window.ouvrirPanelAdmin(); window.fermerMenuGlobal();">
                             <span class="icon">🔒</span> Mode Admin
                         </button>

@@ -232,38 +232,7 @@ window.bossManager = {
             this._timerInterval = null;
         }
 
-        // Pénalité de défaite : -50% des plantes récoltées
-        if (!victoire) {
-            this.appliquerPenaliteDefaite();
-        }
-
         this.afficherResultatCombat(victoire);
-    },
-
-    appliquerPenaliteDefaite: function() {
-        if (!window.gameState || !window.gameState.inventairePlantes) return;
-        
-        const inventaire = window.gameState.inventairePlantes;
-        let plantesPerdues = 0;
-
-        Object.keys(inventaire).forEach(nom => {
-            const quantite = inventaire[nom];
-            if (quantite > 0) {
-                const perte = Math.floor(quantite * 0.5);
-                inventaire[nom] -= perte;
-                plantesPerdues += perte;
-                if (inventaire[nom] <= 0) delete inventaire[nom];
-            }
-        });
-
-        if (plantesPerdues > 0) {
-            if (window.afficherToast) {
-                window.afficherToast(`💀 Défaite ! Vous avez perdu ${plantesPerdues.toLocaleString()} plantes.`, 'error');
-            }
-            window.sauvegarderProgression();
-            if (window.updateHeaderUI) window.updateHeaderUI();
-            if (window.updateInventoryUI) window.updateInventoryUI();
-        }
     },
 
     recolterRecompense: function() {
@@ -293,23 +262,15 @@ window.bossManager = {
         const serreTab = document.getElementById('tab-serre');
         if (!serreTab) return;
 
-        // Masquer les boutons de navigation (fleches et auto)
-        const btnNext = document.getElementById('btn-route-next');
-        const btnPrev = document.getElementById('btn-route-prev');
-        const btnAuto = document.getElementById('btn-auto-route');
-        if (btnNext) btnNext.style.display = 'none';
-        if (btnPrev) btnPrev.style.display = 'none';
-        if (btnAuto) btnAuto.style.display = 'none';
-
         const overlay = document.createElement('div');
         overlay.id = 'boss-arena-overlay';
         overlay.style.backgroundImage = `url('${this.config.fond}')`;
 
         overlay.innerHTML = `
             <div class="boss-arena-hud">
-                <div class="boss-arena-top-row" style="display:flex; justify-content:space-between; align-items:center; width:100%; margin-bottom:10px;">
-                    <button id="btn-quit-boss-direct" class="btn-boss-quit">🏃 Quitter</button>
-                    <div class="boss-arena-timer" id="boss-arena-timer" style="margin:0;">${this.formatTemps(this.config.dureeCombatMs)}</div>
+                <div class="boss-arena-top-row">
+                    <button class="btn-boss-quit" onclick="event.stopPropagation(); window.bossManager.quitterArena()">🏃 Quitter</button>
+                    <div class="boss-arena-timer" id="boss-arena-timer">${this.formatTemps(this.config.dureeCombatMs)}</div>
                 </div>
                 <div class="boss-arena-hpbar-track">
                     <div class="boss-arena-hpbar-fill" id="boss-arena-hpbar-fill" style="width:100%;"></div>
@@ -322,18 +283,6 @@ window.bossManager = {
         `;
 
         serreTab.appendChild(overlay);
-
-        // Gestionnaire d'evenement direct pour le bouton quitter
-        setTimeout(() => {
-            const btnQuit = document.getElementById('btn-quit-boss-direct');
-            if (btnQuit) {
-                btnQuit.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    this.quitterArena();
-                }, true); // Capture mode pour priorite absolue
-            }
-        }, 0);
     },
 
     mettreAJourUICombat: function(tempsRestantMs) {
@@ -379,14 +328,6 @@ window.bossManager = {
         const overlay = document.getElementById('boss-arena-overlay');
         if (overlay) overlay.remove();
 
-        // Re-afficher les boutons de navigation
-        const btnNext = document.getElementById('btn-route-next');
-        const btnPrev = document.getElementById('btn-route-prev');
-        const btnAuto = document.getElementById('btn-auto-route');
-        if (btnNext) btnNext.style.display = 'flex';
-        if (btnPrev) btnPrev.style.display = 'flex';
-        if (btnAuto) btnAuto.style.display = 'flex';
-
         // Reafficher les symbiotes actifs
         if (window.symbiotesManager && Array.isArray(window.symbiotesManager.actifs)) {
             window.symbiotesManager.actifs.forEach(s => {
@@ -404,19 +345,33 @@ window.bossManager = {
         if (!arena) return;
 
         const rect = arena.getBoundingClientRect();
-        const x = (event && event.clientX) ? event.clientX : (rect.left + rect.width / 2);
-        const y = (event && event.clientY) ? event.clientY : (rect.top + rect.height / 2);
+
+        // Extraction correcte des coordonnees, que l'evenement soit tactile (touchstart/touchmove,
+        // ou l'evenement original ait deja ete consomme) ou souris. Sans ce test, event.clientX
+        // est undefined sur mobile (les touch events exposent leurs coordonnees via .touches[0]),
+        // et le chiffre retombait toujours au centre de l'arene.
+        const touch = event && event.touches && event.touches[0];
+        const clientX = touch ? touch.clientX : (event && event.clientX);
+        const clientY = touch ? touch.clientY : (event && event.clientY);
+
+        const x = (typeof clientX === 'number') ? clientX : (rect.left + rect.width / 2);
+        const y = (typeof clientY === 'number') ? clientY : (rect.top + rect.height / 2);
+
+        // Decalage vers le haut : le chiffre apparait au-dessus du point d'impact plutot que
+        // pile dessus, pour ne pas etre masque par le doigt sur mobile pendant l'appui.
+        // Valeur augmentee (65 -> 100) car un doigt/pouce couvre facilement 60-80px sur mobile.
+        const decalageVertical = 100;
 
         const el = document.createElement('div');
         el.className = 'boss-float-dmg';
         el.textContent = `-${montant}`;
         el.style.left = `${x}px`;
-        el.style.top = `${y}px`;
+        el.style.top = `${y - decalageVertical}px`;
         document.body.appendChild(el);
 
         setTimeout(() => {
             if (el.parentNode) el.parentNode.removeChild(el);
-        }, 700);
+        }, 900);
     },
 
     // --- STYLES ---
@@ -740,15 +695,20 @@ window.bossManager = {
                 transform: translate(-50%, 0);
                 font-family: 'Courier New', monospace;
                 font-weight: bold;
-                font-size: 1rem;
+                font-size: 2rem;
                 color: #ff5757;
-                text-shadow: 0 0 6px rgba(255, 87, 87, 0.9);
+                text-shadow:
+                    0 0 6px rgba(255, 87, 87, 0.95),
+                    -2px -2px 0 #000,
+                    2px -2px 0 #000,
+                    -2px 2px 0 #000,
+                    2px 2px 0 #000;
                 pointer-events: none;
-                animation: bossFloatDmg 0.7s ease-out forwards;
+                animation: bossFloatDmg 0.9s ease-out forwards;
             }
             @keyframes bossFloatDmg {
                 0% { opacity: 1; transform: translate(-50%, 0) scale(0.9); }
-                100% { opacity: 0; transform: translate(-50%, -40px) scale(1.1); }
+                100% { opacity: 0; transform: translate(-50%, -55px) scale(1.15); }
             }
         `;
         document.head.appendChild(style);

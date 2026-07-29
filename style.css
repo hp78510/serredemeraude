@@ -264,6 +264,19 @@ h1 {
     font-size: 1.2rem;
 }
 
+/* Petite icone d'acces a la liste des routes (placee au-dessus de la fleche du haut) */
+.routes-list-btn {
+    width: 30px !important;
+    height: 30px !important;
+    font-size: 0.9rem !important;
+    color: #57d2ff;
+    border-color: rgba(87, 210, 255, 0.4) !important;
+}
+.routes-list-btn:hover {
+    border-color: #57d2ff !important;
+    box-shadow: 0 0 12px #57d2ff !important;
+}
+
 .route-btn:disabled {
     color: #555 !important;
     border-color: #333 !important;
@@ -417,4 +430,98 @@ h1 {
     text-align: center;
     margin-top: 20%;
     opacity: 0.7;
+}
+
+/* --- ANIMATION CHANGEMENT DE ROUTE --- */
+.route-change-overlay {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 2000;
+    pointer-events: none;
+    text-align: center;
+    width: 100%;
+}
+
+.route-change-text {
+    font-size: 4rem;
+    font-weight: bold;
+    color: var(--neon-green);
+    text-shadow: 0 0 20px var(--neon-green), 0 0 40px rgba(57, 255, 20, 0.5);
+    opacity: 0;
+    transform: scale(0.5);
+    animation: routePop 1.5s ease-out forwards;
+}
+
+@keyframes routePop {
+    0% { opacity: 0; transform: scale(0.5) translateY(20px); }
+    20% { opacity: 1; transform: scale(1.1) translateY(0); }
+    80% { opacity: 1; transform: scale(1) translateY(0); }
+    100% { opacity: 0; transform: scale(1.2) translateY(-20px); }
+}
+
+.route-change-plants {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    margin-top: 15px;
+    opacity: 0;
+    transform: scale(0.5) translateY(20px);
+    animation: routePlantsAppear 1.5s ease-out forwards;
+}
+
+.route-change-plant-icon {
+    font-size: 2.5rem;
+    display: inline-block;
+    opacity: 0;
+    animation: routePlantsIconPop 1.5s ease-out forwards;
+}
+
+.route-change-plant-icon:nth-child(1) {
+    animation-delay: 0.3s;
+}
+
+.route-change-plant-icon:nth-child(2) {
+    animation-delay: 0.5s;
+}
+
+@keyframes routePlantsAppear {
+    0% { opacity: 0; transform: scale(0.5) translateY(20px); }
+    20% { opacity: 1; transform: scale(1) translateY(0); }
+    80% { opacity: 1; transform: scale(1) translateY(0); }
+    100% { opacity: 0; transform: scale(1) translateY(0); }
+}
+
+@keyframes routePlantsIconPop {
+    0% { opacity: 0; transform: scale(0.3) rotateZ(-15deg); }
+    20% { opacity: 1; transform: scale(1.15) rotateZ(5deg); }
+    40% { transform: scale(1) rotateZ(0deg); }
+    80% { opacity: 1; transform: scale(1) rotateZ(0deg); }
+    100% { opacity: 0; transform: scale(0.8) rotateZ(15deg); }
+}
+
+/* --- BOUTON TELEPORTATION DANS LA LISTE --- */
+.btn-teleport-route {
+    background: rgba(87, 210, 255, 0.1);
+    border: 1px solid #57d2ff;
+    color: #57d2ff;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-left: auto;
+}
+
+.btn-teleport-route:hover {
+    background: rgba(87, 210, 255, 0.3);
+    box-shadow: 0 0 8px #57d2ff;
+}
+
+.btn-teleport-route.actuelle {
+    border-color: var(--neon-green);
+    color: var(--neon-green);
+    background: rgba(57, 255, 20, 0.1);
+    cursor: default;
 }

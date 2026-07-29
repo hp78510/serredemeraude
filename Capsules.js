@@ -105,7 +105,17 @@ window.capsulesManager = {
         const exponentiel = Math.floor(this.config.baseRequirement * Math.pow(this.config.growthFactor, niveau));
 
         const db = window.PLANT_DB;
-        const routeIndex = (window.gameState.currentRoute || 1) - 1;
+        // IMPORTANT : on utilise la route la PLUS AVANCEE jamais debloquee, PAS la route
+        // actuellement affichee (currentRoute). On combine unlockedRoute (progression de la
+        // run actuelle) ET plusHauteRouteAtteinte (record PERMANENT qui survit meme a une
+        // Mutation Genetique) pour qu'un joueur avec un build deja puissant ne puisse jamais
+        // trivialiser le plafond en revenant farmer une route facile (ex: route 1, PV tres bas).
+        const routeReference = Math.max(
+            window.gameState.currentRoute || 1,
+            window.gameState.unlockedRoute || 1,
+            window.gameState.plusHauteRouteAtteinte || 1
+        );
+        const routeIndex = routeReference - 1;
         const plantRef = db && db[routeIndex] ? db[routeIndex] : null;
         const capMax = plantRef ? Math.floor(plantRef.maxHp * this.config.capMultiplierPerPlant) : exponentiel;
 
@@ -131,7 +141,7 @@ window.capsulesManager = {
 
         if (capsulesGagnees > 0) {
             if (window.afficherToast) {
-                window.afficherToast(`📦 +${capsulesGagnees} Capsule${capsulesGagnees > 1 ? 's' : ''} Organique${capsulesGagnees > 1 ? 's' : ''} !`, 'info');
+                window.afficherToast(`📦 ${capsulesGagnees > 1 ? capsulesGagnees + ' Capsules obtenues !' : 'Capsule Organique obtenue !'}`, 'info');
             }
             window.sauvegarderProgression();
             this.refreshMenuUI();
@@ -300,14 +310,23 @@ window.capsulesManager = {
                     <button class="btn-close-menu" onclick="window.capsulesManager.fermerMenuCapsules()">✖</button>
                 </div>
                 <div class="menu-body">
-                    <div id="capsules-stock-section"></div>
-                    <div id="capsules-items-section"></div>
+                    <div id="capsules-grid" class="capsules-grid"></div>
+                    <div id="capsules-preview"></div>
                 </div>
             </div>
         `;
 
         document.body.appendChild(overlay);
         this.injectStylesMenu();
+
+        // Selectionne automatiquement le premier slot pertinent (capsules en stock si il y en a,
+        // sinon le premier objet possede) pour que l'apercu ne soit jamais vide a l'ouverture.
+        if (!this._slotSelectionne) {
+            const slots = this.getListeSlots();
+            const premierUtile = slots.find(s => s.count > 0);
+            this._slotSelectionne = premierUtile ? premierUtile.id : (slots[0] ? slots[0].id : null);
+        }
+
         this.refreshMenuUI();
 
         this._intervalId = setInterval(() => this.refreshMenuUI(), 1000);
@@ -322,70 +341,127 @@ window.capsulesManager = {
         }
     },
 
+    /**
+     * Construit la liste unifiee des "slots" affiches dans la grille : le stock de
+     * capsules non ouvertes (1er slot) suivi des 7 objets bonus possibles.
+     */
+    getListeSlots: function() {
+        this.ensureDefaults();
+        const inventaire = window.gameState.objetsInventaire || {};
+        const buffs = window.gameState.buffsActifs || {};
+        const now = Date.now();
+
+        const slots = [{
+            id: 'capsuleStock',
+            estCapsule: true,
+            iconHtml: `<img src="${this.config.icon}" class="capsule-slot-img" onerror="this.remove();">`,
+            name: 'Capsule Non Ouverte',
+            desc: 'Ouvre une capsule et revele un objet bonus aleatoire.',
+            count: window.gameState.capsulesStock || 0,
+            actif: false,
+            restantSec: 0
+        }];
+
+        Object.keys(this.config.items).forEach(id => {
+            const item = this.config.items[id];
+            const expiresAt = buffs[id] || 0;
+            const actif = expiresAt > now;
+            slots.push({
+                id: id,
+                estCapsule: false,
+                iconHtml: `<span class="capsule-slot-emoji">${item.icon}</span>`,
+                name: item.name,
+                desc: item.desc,
+                count: inventaire[id] || 0,
+                actif: actif,
+                restantSec: actif ? Math.ceil((expiresAt - now) / 1000) : 0
+            });
+        });
+
+        return slots;
+    },
+
+    /**
+     * Appelee au clic sur une case de la grille : change la selection et rafraichit
+     * uniquement l'apercu + la mise en surbrillance (pas besoin de tout reconstruire).
+     */
+    selectionnerSlot: function(id) {
+        this._slotSelectionne = id;
+        this.refreshMenuUI();
+    },
+
+    /**
+     * Action du bouton "UTILISER" : ouvre une capsule si le slot selectionne est le
+     * stock de capsules, ou consomme l'objet bonus correspondant sinon.
+     */
+    utiliserSlotSelectionne: function() {
+        if (!this._slotSelectionne) return;
+
+        if (this._slotSelectionne === 'capsuleStock') {
+            this.ouvrirCapsule();
+        } else {
+            this.utiliserObjet(this._slotSelectionne);
+        }
+    },
+
     refreshMenuUI: function() {
         if (!document.getElementById('capsules-overlay')) return;
         this.ensureDefaults();
 
-        const stockSection = document.getElementById('capsules-stock-section');
-        const itemsSection = document.getElementById('capsules-items-section');
-        if (!stockSection || !itemsSection) return;
+        const grid = document.getElementById('capsules-grid');
+        const preview = document.getElementById('capsules-preview');
+        if (!grid || !preview) return;
 
-        const stock = window.gameState.capsulesStock || 0;
-        stockSection.innerHTML = `
-            <div class="capsule-stock-card">
-                <div class="capsule-stock-info">
-                    <img src="${this.config.icon}" class="capsule-stock-icon" onerror="this.remove();">
-                    <span>Capsules non ouvertes : <strong>${stock}</strong></span>
-                </div>
-                <div class="capsule-stock-actions">
-                    <button class="btn-mutation-trigger" style="width:auto; padding:8px 14px;" ${stock <= 0 ? 'disabled' : ''} onclick="window.capsulesManager.ouvrirCapsule()">Ouvrir 1</button>
-                    <button class="btn-mutation-trigger" style="width:auto; padding:8px 14px;" ${stock <= 0 ? 'disabled' : ''} onclick="window.capsulesManager.ouvrirToutesLesCapsules()">Tout Ouvrir</button>
-                </div>
-            </div>
-        `;
+        const slots = this.getListeSlots();
 
-        const inventaire = window.gameState.objetsInventaire || {};
-        const buffs = window.gameState.buffsActifs || {};
-        const now = Date.now();
-        const ids = Object.keys(this.config.items);
-        const idsPertinents = ids.filter(id => (inventaire[id] > 0) || (buffs[id] && buffs[id] > now));
-
-        let html = '<h4 style="color:#ffd93d; margin:15px 0 10px; border-bottom:1px dashed var(--dim-green); padding-bottom:5px;">Vos Objets</h4>';
-
-        if (idsPertinents.length === 0) {
-            html += `<div style="color:#666; font-size:0.8rem; text-align:center; padding:10px;">Aucun objet pour le moment. Ouvrez des capsules !</div>`;
-        } else {
-            idsPertinents.forEach(id => {
-                const item = this.config.items[id];
-                const count = inventaire[id] || 0;
-                const expiresAt = buffs[id] || 0;
-                const actif = expiresAt > now;
-                const restant = actif ? Math.ceil((expiresAt - now) / 1000) : 0;
-                const mm = Math.floor(restant / 60);
-                const ss = restant % 60;
-
-                html += `
-                    <div class="capsule-item-card ${actif ? 'capsule-item-actif' : ''}">
-                        <div class="capsule-item-top">
-                            <span class="capsule-item-icon">${item.icon}</span>
-                            <div class="capsule-item-info">
-                                <span class="capsule-item-name">${item.name}</span>
-                                <span class="capsule-item-desc">${item.desc}</span>
-                            </div>
-                        </div>
-                        <div class="capsule-item-bottom">
-                            <span class="capsule-item-count">Possédés : ${count}</span>
-                            ${actif ? `<span class="capsule-item-timer">🕒 ${mm}:${ss.toString().padStart(2, '0')}</span>` : ''}
-                            <button class="btn-mutation" ${count <= 0 ? 'disabled' : ''} onclick="window.capsulesManager.utiliserObjet('${id}')">
-                                ${actif ? 'Utiliser (+1min)' : 'Utiliser (1min)'}
-                            </button>
-                        </div>
-                    </div>
-                `;
-            });
+        // Si le slot selectionne n'existe plus (cas improbable), on retombe sur le premier
+        if (!slots.some(s => s.id === this._slotSelectionne)) {
+            this._slotSelectionne = slots[0] ? slots[0].id : null;
         }
 
-        itemsSection.innerHTML = html;
+        // --- Grille des icones ---
+        grid.innerHTML = slots.map(slot => {
+            const selectionne = slot.id === this._slotSelectionne;
+            const vide = slot.count <= 0;
+            return `
+                <div class="capsule-slot ${selectionne ? 'capsule-slot-selected' : ''} ${vide ? 'capsule-slot-vide' : ''}"
+                     onclick="window.capsulesManager.selectionnerSlot('${slot.id}')">
+                    ${slot.actif ? '<span class="capsule-slot-actif-dot"></span>' : ''}
+                    <div class="capsule-slot-icon">${slot.iconHtml}</div>
+                    <div class="capsule-slot-count">${slot.count}</div>
+                </div>
+            `;
+        }).join('');
+
+        // --- Panneau d'apercu (bas) ---
+        const slot = slots.find(s => s.id === this._slotSelectionne);
+        if (!slot) {
+            preview.innerHTML = `<div class="capsules-preview-vide">Sélectionnez un objet dans la grille ci-dessus.</div>`;
+            return;
+        }
+
+        const peutUtiliser = slot.count > 0;
+        const mm = Math.floor(slot.restantSec / 60);
+        const ss = slot.restantSec % 60;
+
+        preview.innerHTML = `
+            <div class="capsules-preview-card">
+                <div class="capsules-preview-top">
+                    <div class="capsules-preview-icon">${slot.iconHtml}</div>
+                    <div class="capsules-preview-info">
+                        <div class="capsules-preview-name">${slot.name}</div>
+                        <div class="capsules-preview-stats">
+                            ${slot.actif ? `<span class="capsules-preview-stat">🕒 ${mm}:${ss.toString().padStart(2, '0')}</span>` : ''}
+                            <span class="capsules-preview-stat">📦 x${slot.count}</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="capsules-preview-desc">${slot.desc}</div>
+                <button class="btn-capsule-utiliser" ${peutUtiliser ? '' : 'disabled'} onclick="window.capsulesManager.utiliserSlotSelectionne()">
+                    UTILISER
+                </button>
+            </div>
+        `;
     },
 
     // --- INIT GLOBAL (appele depuis app.js -> initGame) ---
@@ -542,51 +618,142 @@ window.capsulesManager = {
             }
             .menu-body { padding: 15px; }
 
-            .capsule-stock-card {
-                display: flex;
-                align-items: center;
-                justify-content: space-between;
-                gap: 10px;
-                background: rgba(255, 217, 61, 0.08);
-                border: 1px solid #ffd93d;
-                border-radius: 6px;
-                padding: 12px;
-                margin-bottom: 10px;
-                flex-wrap: wrap;
+            /* --- Grille d'icones (inspiree de l'inventaire type "bomb.png") --- */
+            .capsules-grid {
+                display: grid;
+                grid-template-columns: repeat(5, 1fr);
+                gap: 8px;
+                margin-bottom: 15px;
             }
-            .capsule-stock-info { display: flex; align-items: center; gap: 10px; color: #fff; font-size: 0.85rem; }
-            .capsule-stock-icon { width: 28px; height: 28px; object-fit: contain; }
-            .capsule-stock-actions { display: flex; gap: 8px; }
-
-            .capsule-item-card {
-                background: rgba(0,0,0,0.3);
-                border: 1px solid var(--dim-green);
-                border-radius: 6px;
-                padding: 10px;
-                margin-bottom: 10px;
+            .capsule-slot {
+                position: relative;
+                aspect-ratio: 1;
+                background: rgba(0,0,0,0.35);
+                border: 2px solid var(--dim-green);
+                border-radius: 8px;
                 display: flex;
                 flex-direction: column;
-                gap: 8px;
-                transition: 0.2s;
+                align-items: center;
+                justify-content: center;
+                gap: 2px;
+                cursor: pointer;
+                transition: 0.15s;
+                overflow: hidden;
             }
-            .capsule-item-card.capsule-item-actif {
-                border-color: var(--neon-green);
-                box-shadow: 0 0 10px rgba(57,255,20,0.3);
+            .capsule-slot:hover { border-color: #ffd93d; }
+            .capsule-slot.capsule-slot-selected {
+                border-color: #ffd93d;
+                box-shadow: 0 0 12px rgba(255, 217, 61, 0.7);
+                background: rgba(255, 217, 61, 0.1);
             }
-            .capsule-item-top { display: flex; align-items: center; gap: 10px; }
-            .capsule-item-icon { font-size: 1.5rem; }
-            .capsule-item-info { display: flex; flex-direction: column; }
-            .capsule-item-name { font-weight: bold; color: #fff; font-size: 0.85rem; }
-            .capsule-item-desc { font-size: 0.72rem; color: #ccc; }
-            .capsule-item-bottom {
+            .capsule-slot.capsule-slot-vide {
+                opacity: 0.4;
+                filter: grayscale(0.6);
+            }
+            .capsule-slot-icon {
+                font-size: 1.6rem;
+                line-height: 1;
                 display: flex;
                 align-items: center;
-                justify-content: space-between;
-                gap: 8px;
-                font-size: 0.75rem;
+                justify-content: center;
+                height: 28px;
             }
-            .capsule-item-count { color: #999; }
-            .capsule-item-timer { color: var(--neon-green); font-weight: bold; }
+            .capsule-slot-emoji { font-size: 1.6rem; }
+            .capsule-slot-img { width: 26px; height: 26px; object-fit: contain; }
+            .capsule-slot-count {
+                font-size: 0.7rem;
+                font-weight: bold;
+                color: var(--neon-green);
+                background: rgba(0,0,0,0.5);
+                padding: 0 4px;
+                border-radius: 3px;
+            }
+            .capsule-slot-actif-dot {
+                position: absolute;
+                top: 4px;
+                right: 4px;
+                width: 8px;
+                height: 8px;
+                border-radius: 50%;
+                background: var(--neon-green);
+                box-shadow: 0 0 6px var(--neon-green);
+            }
+
+            /* --- Panneau d'apercu (bas) --- */
+            .capsules-preview-vide {
+                text-align: center;
+                color: #666;
+                font-size: 0.8rem;
+                padding: 20px;
+                font-style: italic;
+            }
+            .capsules-preview-card {
+                background: rgba(0,0,0,0.35);
+                border: 1px solid #ffd93d;
+                border-radius: 8px;
+                padding: 14px;
+                display: flex;
+                flex-direction: column;
+                gap: 10px;
+            }
+            .capsules-preview-top {
+                display: flex;
+                align-items: center;
+                gap: 12px;
+            }
+            .capsules-preview-icon {
+                width: 48px;
+                height: 48px;
+                flex-shrink: 0;
+                background: rgba(0,0,0,0.4);
+                border: 1px solid #ffd93d;
+                border-radius: 8px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 1.8rem;
+            }
+            .capsules-preview-icon img { width: 32px; height: 32px; object-fit: contain; }
+            .capsules-preview-info { display: flex; flex-direction: column; gap: 4px; flex: 1; }
+            .capsules-preview-name { font-weight: bold; color: #fff; font-size: 0.95rem; }
+            .capsules-preview-stats { display: flex; gap: 10px; }
+            .capsules-preview-stat {
+                font-size: 0.75rem;
+                color: #ffd93d;
+                background: rgba(255, 217, 61, 0.1);
+                border: 1px solid rgba(255, 217, 61, 0.3);
+                padding: 2px 8px;
+                border-radius: 10px;
+            }
+            .capsules-preview-desc {
+                font-size: 0.8rem;
+                color: #ddd;
+                line-height: 1.4;
+                background: rgba(0,0,0,0.25);
+                border-left: 3px solid #ffd93d;
+                padding: 8px 10px;
+                border-radius: 4px;
+            }
+            .btn-capsule-utiliser {
+                background: linear-gradient(180deg, #ff5757, #8a1f1f);
+                border: 1px solid #ffb0b0;
+                border-bottom: 3px solid #5c1414;
+                color: #fff;
+                font-weight: bold;
+                font-size: 0.95rem;
+                letter-spacing: 1px;
+                padding: 12px;
+                border-radius: 6px;
+                cursor: pointer;
+                transition: 0.15s;
+            }
+            .btn-capsule-utiliser:hover:not(:disabled) { filter: brightness(1.15); transform: translateY(-1px); }
+            .btn-capsule-utiliser:active:not(:disabled) { transform: translateY(2px); border-bottom-width: 0; }
+            .btn-capsule-utiliser:disabled { background: #333; border-color: #555; color: #777; cursor: not-allowed; }
+
+            @media screen and (max-width: 480px) {
+                .capsules-grid { grid-template-columns: repeat(4, 1fr); }
+            }
         `;
         document.head.appendChild(style);
     }

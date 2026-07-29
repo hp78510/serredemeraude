@@ -18,6 +18,7 @@ document.addEventListener('DOMContentLoaded', () => {
         wavesCompleted: 0,
         wavesCompletedParRoute: {},   // <-- NOUVEAU : garde le score de chaque route individuellement
         unlockedRoute: 1,
+        plusHauteRouteAtteinte: 1, // NOUVEAU : record de progression qui ne se reinitialise JAMAIS (meme apres une Mutation Genetique) - utilise par Capsules.js pour empecher de trivialiser le cout des capsules en revenant farmer une route facile
         inventory: {},
         inventairePlantes: {},
         inventaireSeves: {},
@@ -75,6 +76,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 wavesCompleted: window.gameState.wavesCompleted,
                 wavesCompletedParRoute: window.gameState.wavesCompletedParRoute || {}, // <-- NOUVEAU
                 unlockedRoute: window.gameState.unlockedRoute,
+                plusHauteRouteAtteinte: window.gameState.plusHauteRouteAtteinte || window.gameState.unlockedRoute || 1, // NOUVEAU
                 inventory: sapInventory,
                 inventairePlantes: plantInventory,
                 inventaireSeves: sapInventory,
@@ -133,6 +135,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     xp: parsedData.xp || 0,
                     niveau: parsedData.niveau || 1,
                     niveauMaxDebloque: parsedData.niveauMaxDebloque || 10, // NOUVEAU
+                    plusHauteRouteAtteinte: parsedData.plusHauteRouteAtteinte || parsedData.unlockedRoute || 1, // NOUVEAU
                     mutationUpgrades: parsedData.mutationUpgrades || {},
                     brinsMutants: parsedData.brinsMutants || 0,
                     eclatsEmeraude: parsedData.eclatsEmeraude || 0, // NOUVEAU
@@ -774,6 +777,12 @@ document.addEventListener('DOMContentLoaded', () => {
             if (window.gameState.currentRoute === window.gameState.unlockedRoute) {
                 window.gameState.unlockedRoute++;
                 routeVientDetreDebloquee = true;
+
+                // NOUVEAU : le record de progression ne redescend JAMAIS, meme apres
+                // une future Mutation Genetique (voir Capsules.js pour son utilisation)
+                if (window.gameState.unlockedRoute > (window.gameState.plusHauteRouteAtteinte || 1)) {
+                    window.gameState.plusHauteRouteAtteinte = window.gameState.unlockedRoute;
+                }
             }
 
             // Mode Auto : dès que la route actuelle est cleared (vagues requises atteintes),
@@ -850,25 +859,79 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     /**
-     * Change Route (Exporte pour Admin)
+     * Affiche une animation visuelle lors du changement de route
+     */
+    window.showRouteChangeAnimation = function(routeNumber) {
+        // Supprimer l'ancienne animation si elle existe encore
+        const oldOverlay = document.querySelector('.route-change-overlay');
+        if (oldOverlay) oldOverlay.remove();
+
+        const overlay = document.createElement('div');
+        overlay.className = 'route-change-overlay';
+        
+        // Construire le HTML avec le numero et les icones des plantes
+        let plantsHtml = '';
+        if (window.PLANT_DB) {
+            const db = window.PLANT_DB;
+            const currentIdx = routeNumber - 1;
+            const prevIdx = routeNumber - 2;
+            
+            // Afficher la plante de la route precedente (si elle existe) puis celle de cette route
+            if (prevIdx >= 0 && db[prevIdx]) {
+                plantsHtml += `<span class="route-change-plant-icon">${db[prevIdx].icon}</span>`;
+            }
+            if (currentIdx >= 0 && db[currentIdx]) {
+                plantsHtml += `<span class="route-change-plant-icon">${db[currentIdx].icon}</span>`;
+            }
+        }
+        
+        overlay.innerHTML = `
+            <div class="route-change-text">ROUTE ${routeNumber}</div>
+            ${plantsHtml ? `<div class="route-change-plants">${plantsHtml}</div>` : ''}
+        `;
+        document.body.appendChild(overlay);
+
+        // Auto-destruction apres l'animation
+        setTimeout(() => {
+            if (overlay.parentNode) overlay.remove();
+        }, 2000);
+    };
+
+    /**
+     * Change Route (Exporte pour Admin et Liste des Routes)
      */
     window.changeRoute = function(direction) {
         const newRoute = window.gameState.currentRoute + direction;
+        window.goToRoute(newRoute);
+    };
 
-        if (newRoute < 1 || newRoute > window.gameState.unlockedRoute) return;
-
-        window.gameState.currentRoute = newRoute;
+    /**
+     * Teleportation directe vers une route specifique
+     */
+    window.goToRoute = function(routeNumber) {
+        if (routeNumber < 1 || routeNumber > window.gameState.unlockedRoute) return;
+        
+        const isDifferent = window.gameState.currentRoute !== routeNumber;
+        window.gameState.currentRoute = routeNumber;
 
         // MODIFIE : on recharge le score de vagues deja enregistre pour cette route
-        // au lieu de le remettre a 0 a chaque changement
         if (!window.gameState.wavesCompletedParRoute) window.gameState.wavesCompletedParRoute = {};
-        window.gameState.wavesCompleted = window.gameState.wavesCompletedParRoute[newRoute] || 0;
+        window.gameState.wavesCompleted = window.gameState.wavesCompletedParRoute[routeNumber] || 0;
 
         window.updateRouteUI();
         window.updateHeaderUI();
         window.spawnWave();
         
+        if (isDifferent) {
+            window.showRouteChangeAnimation(routeNumber);
+        }
+
         window.sauvegarderProgression();
+
+        // Si l'overlay de la liste des routes est ouvert, on le rafraichit ou on le ferme
+        if (window.routesListeManager && document.getElementById('routes-liste-overlay')) {
+            window.routesListeManager.render();
+        }
     };
 
     // --- LANCEMENT ---
