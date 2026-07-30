@@ -9,7 +9,8 @@ window.offlineManager = {
 
         // Rendement hors-ligne : le joueur absent ne doit JAMAIS recolter autant qu'en jeu actif
         // (standard dans les jeux idle : 50% est une valeur courante et equilibree).
-        efficaciteHorsLigne: 0.5,
+        // Modifié à 0.3 (30%) selon la demande utilisateur pour réduire la destruction offline.
+        efficaciteHorsLigne: 0.3,
 
         // GARDE-FOU CRITIQUE : peu importe la puissance du build (upgrades, mutations, evolution,
         // capsules...), on ne peut jamais depasser ce nombre de plantes recoltees par seconde
@@ -17,7 +18,8 @@ window.offlineManager = {
         // global augmente proportionnellement (coherent : chaque symbiote contribue a la recolte).
         // Sans ce plafond, un build tres optimise sur une route a faibles PV produit des nombres
         // absurdes (des milliers de plantes en quelques minutes).
-        plafondPlantesParSecondeParSymbiote: 0.5   // = 30 plantes/minute max PAR symbiote actif
+        // Modifié à 0.3 selon la demande utilisateur pour réduire la destruction offline.
+        plafondPlantesParSecondeParSymbiote: 0.3   // = 18 plantes/minute max PAR symbiote actif
     },
 
     // Temps d'absence "fige" au tout debut du chargement, AVANT que les routines
@@ -71,9 +73,6 @@ window.offlineManager = {
 
         const stats = manager.getStats();
         // Degats moyens par coup, en tenant compte de la chance de critique (esperance mathematique)
-        // NOTE : pas de facteur d'AOE ici (retire) - on reste volontairement sur une estimation
-        // "single-target" sobre. La generosite ou non du systeme se regle uniquement via
-        // config.efficaciteHorsLigne et config.plafondPlantesParSecondeParSymbiote ci-dessus.
         const degatsMoyens = stats.damage * (1 + stats.critChance * (stats.critDamage - 1));
         const coupsParSeconde = 1000 / Math.max(50, stats.attackSpeed);
 
@@ -84,8 +83,7 @@ window.offlineManager = {
     /**
      * Retourne le plafond de plantes/seconde applicable, en fonction du nombre de
      * symbiotes ACTIFS au moment du chargement. Plus il y a de symbiotes, plus le
-     * plafond global monte (proportionnellement), tout en restant toujours borne -
-     * contrairement au DPS brut qui peut s'envoler avec les upgrades/mutations/talents.
+     * plafond global monte (proportionnellement), tout en restant toujours borne.
      */
     getPlafondPlantesParSeconde: function() {
         const manager = window.symbiotesManager;
@@ -119,14 +117,6 @@ window.offlineManager = {
 
     /**
      * Coeur du systeme : calcule les gains hors-ligne et les applique au gameState.
-     * A appeler dans app.js -> initGame(), APRES le chargement de la sauvegarde,
-     * la reactivation des symbiotes ET l'application de tous les bonus permanents
-     * (sinon les stats des symbiotes utilisees seraient fausses).
-     *
-     * IMPORTANT : utilise le temps d'absence FIGE par capturerAbsence() (appelee en
-     * tout premier dans initGame), et NON une nouvelle lecture du localStorage a ce
-     * stade - sinon les sauvegardes intermediaires declenchees par la reactivation
-     * des symbiotes auraient deja ecrase le timestamp avec l'heure actuelle.
      */
     calculerEtAppliquerProgression: function() {
         if (!window.gameState) return;
@@ -136,7 +126,6 @@ window.offlineManager = {
             : this.getTempsAbsenceSecondes();
         this._absenceCaptureSec = null; // Consomme la valeur figee
 
-        // Rien a faire si absence trop courte ou premiere partie
         if (tempsAbsenceSec < this.config.minOfflineSeconds) return;
 
         const tempsEffectifSec = Math.min(tempsAbsenceSec, this.config.maxOfflineSeconds);
@@ -147,21 +136,18 @@ window.offlineManager = {
         let nbPlantesTuees = 0;
         let gainsParPlante = {};
         let xpTotale = 0;
+        let goldTotalSymbiotes = 0;
 
         if (dps > 0 && statsRoute) {
-            // Rendement hors-ligne applique AVANT le calcul (jamais 100% du DPS actif)
             const dpsEffectif = dps * this.config.efficaciteHorsLigne;
             const degatsTotal = dpsEffectif * tempsEffectifSec;
             const nbPlantesTueesBrut = Math.floor(degatsTotal / statsRoute.pvMoyen);
 
-            // GARDE-FOU : plafond dynamique (par symbiote actif), garantit un resultat
-            // toujours coherent quel que soit le DPS, tout en scalant avec le nombre de symbiotes
             const plafondParSeconde = this.getPlafondPlantesParSeconde();
             const plafondPlantes = Math.floor(plafondParSeconde * tempsEffectifSec);
             nbPlantesTuees = Math.min(nbPlantesTueesBrut, plafondPlantes);
 
             if (nbPlantesTuees > 0) {
-                // 1. Plantes recoltees (reparties equitablement entre les plantes autorisees sur la route)
                 const multiplicateurPlantes = window.boutiqueManager ? window.boutiqueManager.getPlantMultiplier() : 1;
 
                 statsRoute.plantes.forEach(plante => {
@@ -170,18 +156,27 @@ window.offlineManager = {
                         if (!window.gameState.inventairePlantes) window.gameState.inventairePlantes = {};
                         window.gameState.inventairePlantes[plante.name] = (window.gameState.inventairePlantes[plante.name] || 0) + part;
                         gainsParPlante[plante.name] = part;
+
+                        // BONUS : Bonus "Récolte Dorée" des symbiotes (si actif)
+                        if (window.symbiotesManager && window.symbiotesManager.calculerGoldBonusRecolte) {
+                            const bonusUnitaire = window.symbiotesManager.calculerGoldBonusRecolte(plante);
+                            if (bonusUnitaire > 0) {
+                                goldTotalSymbiotes += (bonusUnitaire * part);
+                            }
+                        }
                     }
                 });
 
-                // 2. XP (passe par ajouterExperience pour beneficier des bonus d'Evolution/Mutation)
+                // Application des golds gagnés via les symbiotes
+                if (goldTotalSymbiotes > 0 && window.economie) {
+                    window.economie.ajouterGolds(goldTotalSymbiotes);
+                }
+
                 xpTotale = Math.floor(nbPlantesTuees * statsRoute.xpMoyenne);
                 if (xpTotale > 0 && window.ajouterExperience) {
                     window.ajouterExperience(xpTotale);
                 }
 
-                // 3. Alimente aussi la jauge des Capsules - on ne credite QUE les degats
-                // correspondant aux plantes reellement comptees (donc apres plafond), pour
-                // rester coherent et ne pas recompenser des degats "fantomes" au-dela du cap.
                 const degatsCredites = nbPlantesTuees * statsRoute.pvMoyen;
                 if (window.capsulesManager) {
                     window.capsulesManager.ajouterDegatsJauge(Math.floor(degatsCredites));
@@ -189,20 +184,17 @@ window.offlineManager = {
             }
         }
 
-        // Rafraichissement UI + sauvegarde (ceci ecrase a nouveau le timestamp avec "maintenant",
-        // ce qui est correct puisqu'on a deja consomme l'ancienne valeur au debut de la fonction)
         if (window.updateHeaderUI) window.updateHeaderUI();
         if (window.updateInventoryUI) window.updateInventoryUI();
         if (window.sauvegarderProgression) window.sauvegarderProgression();
 
-        // Popup recapitulatif systematique des qu'il y a eu une absence significative,
-        // meme si les gains sont nuls (ex : aucun symbiote actif pendant l'absence)
         this.afficherRecapOffline({
             tempsAbsenceSec: tempsAbsenceSec,
             tempsEffectifSec: tempsEffectifSec,
             nbPlantesTuees: nbPlantesTuees,
             gainsParPlante: gainsParPlante,
             xpTotale: xpTotale,
+            goldTotalSymbiotes: goldTotalSymbiotes,
             aucunGain: nbPlantesTuees <= 0
         });
     },
@@ -230,9 +222,6 @@ window.offlineManager = {
                     <div class="offline-gain-row" style="justify-content:center; opacity:0.7; padding:6px 0;">
                         😴 Aucun symbiote actif n'a travaillé pendant votre absence.
                     </div>
-                    <div class="offline-gain-row" style="justify-content:center; font-size:0.72rem; opacity:0.55;">
-                        Activez un symbiote avant de quitter pour qu'il continue de récolter !
-                    </div>
                 </div>
             `;
         } else {
@@ -251,15 +240,21 @@ window.offlineManager = {
                 <div class="offline-gains-box">
                     <div class="offline-gain-row" style="border-bottom:1px dashed var(--dim-green); padding-bottom:8px; margin-bottom:8px;">
                         <span class="offline-gain-icon">🌿</span>
-                        <span class="offline-gain-name">Plantes recoltees</span>
+                        <span class="offline-gain-name">Plantes récoltées</span>
                         <span class="offline-gain-value">${data.nbPlantesTuees.toLocaleString()}</span>
                     </div>
                     ${listePlantesHtml}
                     <div class="offline-gain-row" style="border-top:1px dashed var(--dim-green); padding-top:8px; margin-top:8px;">
                         <span class="offline-gain-icon">📈</span>
-                        <span class="offline-gain-name">XP gagnee</span>
+                        <span class="offline-gain-name">XP gagnée</span>
                         <span class="offline-gain-value">+${data.xpTotale.toLocaleString()}</span>
                     </div>
+                    ${data.goldTotalSymbiotes > 0 ? `
+                    <div class="offline-gain-row">
+                        <span class="offline-gain-icon">💰</span>
+                        <span class="offline-gain-name">Bonus Symbiotes</span>
+                        <span class="offline-gain-value">+${data.goldTotalSymbiotes.toLocaleString()}</span>
+                    </div>` : ''}
                 </div>
             `;
         }
@@ -274,7 +269,8 @@ window.offlineManager = {
                 <h2 style="color: var(--neon-green); text-shadow: 0 0 8px var(--neon-green); margin-bottom: 10px;">🌙 Pendant votre absence...</h2>
                 <p style="font-size: 0.85rem; color: var(--text-color); margin-bottom: 15px;">
                     Vous étiez parti pendant <strong>${this.formatDuree(data.tempsAbsenceSec)}</strong>
-                    ${plafondAtteint ? `<br><span style="font-size:0.72rem; opacity:0.6;">(gains plafonnes a ${this.formatDuree(this.config.maxOfflineSeconds)} d'absence)</span>` : ''}
+                    ${plafondAtteint ? `  
+<span style="font-size:0.72rem; opacity:0.6;">(gains plafonnés à ${this.formatDuree(this.config.maxOfflineSeconds)} d'absence)</span>` : ''}
                 </p>
 
                 ${contenuGains}
@@ -308,12 +304,12 @@ window.offlineManager = {
                 align-items: center;
                 gap: 8px;
                 font-size: 0.82rem;
-                padding: 3px 0;
+                padding: 4px 0;
             }
-            .offline-gain-icon { flex-shrink: 0; width: 20px; text-align: center; }
-            .offline-plant-icon { width: 18px; height: 18px; object-fit: contain; }
-            .offline-gain-name { flex: 1; color: var(--text-color); }
-            .offline-gain-value { color: var(--neon-green); font-weight: bold; }
+            .offline-gain-icon { width: 24px; text-align: center; display: flex; align-items: center; justify-content: center; }
+            .offline-plant-icon { width: 20px; height: 20px; object-fit: contain; }
+            .offline-gain-name { flex: 1; color: #ccc; }
+            .offline-gain-value { font-weight: bold; color: var(--neon-green); font-family: 'Courier New', monospace; }
         `;
         document.head.appendChild(style);
     }

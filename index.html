@@ -211,15 +211,15 @@
     <!-- Barre de navigation inferieure supprimee -->
 
 <!-- Scripts -->
-    <!-- 1. Fichiers de donnees et initialisation (Base de tout) -->
+    <!-- 1. Fichiers de donnees (Base de tout) -->
     <script src="donnees.js?v=2"></script>
-    <script src="app.js?v=2"></script>
 
-    <!-- 2. Modules fonctionnels (Dependent de app.js) -->
+    <!-- 2. Modules fonctionnels -->
     <script src="economie.js"></script>
     <script src="experience.js"></script>
     <script src="secateur.js"></script>
     <script src="Symbiotes.js"></script>
+    <script src="OfflineProgress.js"></script>
     <script src="Boss.js"></script>
     <script src="Extraction.js"></script>
     <script src="Vente.js"></script>
@@ -230,7 +230,10 @@
     <script src="Capsules.js"></script>
     <script src="ListeRoutes.js"></script>
 
-    <!-- 3. Interface et menus (Dependent de tout ce qui precede) -->
+    <!-- 3. Coeur du jeu (Initialisation) -->
+    <script src="app.js?v=2"></script>
+
+    <!-- 4. Interface et menus (Dependent de tout ce qui precede) -->
     <script src="menu.js"></script>
 
     <script src="parametres.js"></script>

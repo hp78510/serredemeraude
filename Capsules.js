@@ -590,7 +590,7 @@ window.capsulesManager = {
             }
             #capsule-bottom-btn:hover {
                 box-shadow: 0 0 20px var(--neon-green);
-                transform: translateX(-50%) scale(1.08);
+                transform: translateX(-110px) scale(1.1);
             }
         `;
         document.head.appendChild(style);

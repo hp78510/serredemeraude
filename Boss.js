@@ -653,8 +653,10 @@ window.bossManager = {
                 box-shadow: 0 0 8px rgba(255, 179, 71, 0.4);
             }
             .boss-arena-image {
-                width: 220px;
-                height: 220px;
+                width: 320px;
+                height: 320px;
+                max-width: 85vw;
+                max-height: 45vh;
                 object-fit: contain;
                 filter: drop-shadow(0 0 25px rgba(255, 87, 87, 0.6));
                 pointer-events: none;
