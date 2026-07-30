@@ -478,6 +478,15 @@ h1 {
     animation: routePlantsIconPop 1.5s ease-out forwards;
 }
 
+/* NOUVEAU : image reelle de la plante a la place de l'emoji */
+.route-change-plant-img {
+    width: 56px;
+    height: 56px;
+    object-fit: contain;
+    display: block;
+    filter: drop-shadow(0 0 8px var(--neon-green));
+}
+
 .route-change-plant-icon:nth-child(1) {
     animation-delay: 0.3s;
 }

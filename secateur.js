@@ -92,6 +92,16 @@ window.recolterPlante = function(plantData) {
         window.ajouterExperience(plantData.template.xpValue);
     }
 
+    // Amelioration de Symbiotes "Recolte Doree" : golds bonus immediats (10% du prix
+    // de vente REEL de la plante, memes bonus qu'une vente normale), en plus de la
+    // plante ajoutee normalement a l'inventaire
+    if (window.symbiotesManager && window.symbiotesManager.calculerGoldBonusRecolte && plantData.template) {
+        const bonusGold = window.symbiotesManager.calculerGoldBonusRecolte(plantData.template);
+        if (bonusGold > 0 && window.economie) {
+            window.economie.ajouterGolds(bonusGold);
+        }
+    }
+
     // Suppression visuelle et logique
     if (plantData.element && plantData.element.parentNode) {
         plantData.element.parentNode.removeChild(plantData.element);

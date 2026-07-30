@@ -40,6 +40,7 @@ document.addEventListener('DOMContentLoaded', () => {
         capsulesStock: 0,
         objetsInventaire: {},
         buffsActifs: {},
+        symbioteAmeliorationChoisie: null, // NOUVEAU : amelioration unique de Symbiotes (500 gemmes)
         boutique: null   // Initialise par boutiqueManager.ensureDefaults()
     };
 
@@ -98,6 +99,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 capsulesStock: window.gameState.capsulesStock || 0,
                 objetsInventaire: window.gameState.objetsInventaire || {},
                 buffsActifs: window.gameState.buffsActifs || {},
+                symbioteAmeliorationChoisie: window.gameState.symbioteAmeliorationChoisie || null,
                 boutique: window.gameState.boutique || null
             };
             localStorage.setItem('laSerreEmeraude_save', JSON.stringify(dataToSave));
@@ -147,6 +149,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     capsulesStock: parsedData.capsulesStock || 0,
                     objetsInventaire: parsedData.objetsInventaire || {},
                     buffsActifs: parsedData.buffsActifs || {},
+                    symbioteAmeliorationChoisie: (typeof parsedData.symbioteAmeliorationChoisie !== 'undefined') ? parsedData.symbioteAmeliorationChoisie : null,
                     boutique: parsedData.boutique || null,
                     wavesCompletedParRoute: parsedData.wavesCompletedParRoute || {} // <-- NOUVEAU
                 };

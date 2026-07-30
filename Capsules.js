@@ -180,9 +180,31 @@ window.capsulesManager = {
         if (window.afficherToast) window.afficherToast(`📦 Capsule ouverte : ${item.icon} ${item.name} !`, 'info');
     },
 
+    /**
+     * Ouvre TOUT le stock de capsules en une seule fois : tirage groupe, une seule
+     * sauvegarde, un seul toast recapitulatif (au lieu de spammer un toast par capsule).
+     */
     ouvrirToutesLesCapsules: function() {
+        this.ensureDefaults();
         const total = window.gameState.capsulesStock || 0;
-        for (let i = 0; i < total; i++) this.ouvrirCapsule();
+        if (total <= 0) return;
+
+        const gains = {};
+        for (let i = 0; i < total; i++) {
+            const itemId = this.tirerObjetAleatoire();
+            window.gameState.objetsInventaire[itemId] = (window.gameState.objetsInventaire[itemId] || 0) + 1;
+            gains[itemId] = (gains[itemId] || 0) + 1;
+        }
+        window.gameState.capsulesStock = 0;
+
+        window.sauvegarderProgression();
+        this.refreshMenuUI();
+        this.updateJaugeUI();
+
+        const resume = Object.keys(gains)
+            .map(id => `${this.config.items[id].icon} x${gains[id]}`)
+            .join('  ');
+        if (window.afficherToast) window.afficherToast(`📦 ${total} capsules ouvertes : ${resume}`, 'info');
     },
 
     // --- UTILISATION DES OBJETS (buffs cumulables en duree) ---
@@ -298,18 +320,26 @@ window.capsulesManager = {
         this.ensureDefaults();
         if (document.getElementById('capsules-overlay')) return;
 
+        // NOTE : ce n'est PLUS un overlay plein ecran. C'est un petit panneau ancre en
+        // bas de l'ecran (bottom sheet) - le fond reste transparent pour que le joueur
+        // continue de voir la Serre et les plantes derriere. Un clic en dehors du panneau
+        // le referme quand meme (via le calque invisible plein ecran).
         const overlay = document.createElement('div');
         overlay.id = 'capsules-overlay';
-        overlay.className = 'menu-overlay';
+        overlay.className = 'capsules-sheet-backdrop';
         overlay.onclick = (e) => { if (e.target === overlay) this.fermerMenuCapsules(); };
 
         overlay.innerHTML = `
-            <div class="menu-content" style="border-color:#ffd93d; box-shadow:0 0 30px #ffd93d;">
-                <div class="menu-header">
-                    <h2 style="color:#ffd93d; text-shadow:0 0 8px #ffd93d;">📦 Capsules Organiques Scellées</h2>
-                    <button class="btn-close-menu" onclick="window.capsulesManager.fermerMenuCapsules()">✖</button>
+            <div class="capsules-bottom-sheet" onclick="event.stopPropagation()">
+                <div class="capsules-sheet-handle"></div>
+                <div class="capsules-sheet-header">
+                    <h2>📦 Capsules &amp; Objets</h2>
+                    <div class="capsules-sheet-header-actions">
+                        <button class="btn-capsule-open-all" onclick="window.capsulesManager.ouvrirToutesLesCapsules()">📦 Tout Ouvrir</button>
+                        <button class="btn-close-menu" onclick="window.capsulesManager.fermerMenuCapsules()">✖</button>
+                    </div>
                 </div>
-                <div class="menu-body">
+                <div class="capsules-sheet-content">
                     <div id="capsules-grid" class="capsules-grid"></div>
                     <div id="capsules-preview"></div>
                 </div>
@@ -571,59 +601,103 @@ window.capsulesManager = {
         const style = document.createElement('style');
         style.id = 'capsule-menu-styles';
         style.textContent = `
-            /* Styles de base de l'overlay (dupliques de menu.js pour rendre ce module
-               autonome : l'icone des Capsules est visible des le chargement de la page,
-               donc on ne peut pas compter sur menu.js pour les avoir deja injectes) */
-            .menu-overlay {
+            /* --- Calque invisible plein ecran (ferme le panneau au clic en dehors,
+               mais NE MASQUE PAS le jeu - contrairement a .menu-overlay utilise ailleurs) --- */
+            .capsules-sheet-backdrop {
                 position: fixed;
-                top: 0; left: 0; width: 100%; height: 100%;
-                background: rgba(5, 10, 5, 0.95);
+                inset: 0;
                 z-index: 1000;
-                display: flex;
-                justify-content: center;
-                align-items: center;
-                backdrop-filter: blur(5px);
+                background: transparent;
             }
-            .menu-content {
+
+            /* --- Panneau ancre en bas de l'ecran (bottom sheet), format compact --- */
+            .capsules-bottom-sheet {
+                position: absolute;
+                left: 50%;
+                bottom: 0;
+                transform: translateX(-50%);
+                width: 100%;
+                max-width: 480px;
+                max-height: 44vh;
                 background: var(--panel-bg);
-                border: 2px solid var(--neon-green);
-                border-radius: 10px;
-                width: 90%;
-                max-width: 600px;
-                max-height: 80vh;
-                overflow-y: auto;
-                box-shadow: 0 0 30px var(--neon-green);
+                border: 2px solid #ffd93d;
+                border-bottom: none;
+                border-radius: 16px 16px 0 0;
+                box-shadow: 0 -6px 25px rgba(255, 217, 61, 0.35);
                 display: flex;
                 flex-direction: column;
+                overflow: hidden;
+                animation: capsulesSheetSlideUp 0.22s ease-out;
             }
-            .menu-header {
-                padding: 15px;
-                border-bottom: 1px solid var(--dim-green);
+            @keyframes capsulesSheetSlideUp {
+                0% { transform: translateX(-50%) translateY(100%); }
+                100% { transform: translateX(-50%) translateY(0); }
+            }
+            .capsules-sheet-handle {
+                width: 40px;
+                height: 4px;
+                background: var(--dim-green);
+                border-radius: 2px;
+                margin: 8px auto 2px auto;
+                flex-shrink: 0;
+            }
+            .capsules-sheet-header {
                 display: flex;
-                justify-content: space-between;
                 align-items: center;
+                justify-content: space-between;
+                gap: 8px;
+                padding: 6px 14px 8px 14px;
+                border-bottom: 1px solid var(--dim-green);
+                flex-shrink: 0;
             }
-            .menu-header h2 {
-                color: var(--neon-green);
-                text-shadow: 0 0 5px var(--neon-green);
+            .capsules-sheet-header h2 {
+                color: #ffd93d;
+                text-shadow: 0 0 8px #ffd93d;
                 margin: 0;
-                font-size: 1.1rem;
+                font-size: 0.9rem;
+                white-space: nowrap;
             }
-            .btn-close-menu {
+            .capsules-sheet-header-actions {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                flex-shrink: 0;
+            }
+            .btn-capsule-open-all {
+                background: rgba(255, 217, 61, 0.12);
+                border: 1px solid #ffd93d;
+                color: #ffd93d;
+                font-size: 0.68rem;
+                font-weight: bold;
+                padding: 5px 9px;
+                border-radius: 5px;
+                cursor: pointer;
+                white-space: nowrap;
+                transition: 0.15s;
+            }
+            .btn-capsule-open-all:hover { background: rgba(255, 217, 61, 0.25); box-shadow: 0 0 8px #ffd93d; }
+            .capsules-sheet-header .btn-close-menu {
                 background: transparent;
                 border: none;
                 color: var(--text-color);
-                font-size: 1.5rem;
+                font-size: 1.2rem;
                 cursor: pointer;
+                line-height: 1;
             }
-            .menu-body { padding: 15px; }
+            .capsules-sheet-content {
+                flex: 1;
+                overflow-y: auto;
+                display: flex;
+                flex-direction: column;
+            }
 
-            /* --- Grille d'icones (inspiree de l'inventaire type "bomb.png") --- */
+            /* --- Grille d'icones : juste les icones les unes a cote des autres --- */
             .capsules-grid {
                 display: grid;
-                grid-template-columns: repeat(5, 1fr);
-                gap: 8px;
-                margin-bottom: 15px;
+                grid-template-columns: repeat(6, 1fr);
+                gap: 6px;
+                padding: 10px 14px 0 14px;
+                flex-shrink: 0;
             }
             .capsule-slot {
                 position: relative;
@@ -635,7 +709,7 @@ window.capsulesManager = {
                 flex-direction: column;
                 align-items: center;
                 justify-content: center;
-                gap: 2px;
+                gap: 1px;
                 cursor: pointer;
                 transition: 0.15s;
                 overflow: hidden;
@@ -643,7 +717,7 @@ window.capsulesManager = {
             .capsule-slot:hover { border-color: #ffd93d; }
             .capsule-slot.capsule-slot-selected {
                 border-color: #ffd93d;
-                box-shadow: 0 0 12px rgba(255, 217, 61, 0.7);
+                box-shadow: 0 0 10px rgba(255, 217, 61, 0.7);
                 background: rgba(255, 217, 61, 0.1);
             }
             .capsule-slot.capsule-slot-vide {
@@ -651,59 +725,60 @@ window.capsulesManager = {
                 filter: grayscale(0.6);
             }
             .capsule-slot-icon {
-                font-size: 1.6rem;
+                font-size: 1.2rem;
                 line-height: 1;
                 display: flex;
                 align-items: center;
                 justify-content: center;
-                height: 28px;
+                height: 20px;
             }
-            .capsule-slot-emoji { font-size: 1.6rem; }
-            .capsule-slot-img { width: 26px; height: 26px; object-fit: contain; }
+            .capsule-slot-emoji { font-size: 1.2rem; }
+            .capsule-slot-img { width: 20px; height: 20px; object-fit: contain; }
             .capsule-slot-count {
-                font-size: 0.7rem;
+                font-size: 0.6rem;
                 font-weight: bold;
                 color: var(--neon-green);
                 background: rgba(0,0,0,0.5);
-                padding: 0 4px;
+                padding: 0 3px;
                 border-radius: 3px;
             }
             .capsule-slot-actif-dot {
                 position: absolute;
-                top: 4px;
-                right: 4px;
-                width: 8px;
-                height: 8px;
+                top: 3px;
+                right: 3px;
+                width: 6px;
+                height: 6px;
                 border-radius: 50%;
                 background: var(--neon-green);
                 box-shadow: 0 0 6px var(--neon-green);
             }
 
-            /* --- Panneau d'apercu (bas) --- */
+            /* --- Panneau d'apercu : ce que fait l'objet selectionne --- */
             .capsules-preview-vide {
                 text-align: center;
                 color: #666;
-                font-size: 0.8rem;
-                padding: 20px;
+                font-size: 0.75rem;
+                padding: 14px;
                 font-style: italic;
             }
             .capsules-preview-card {
+                margin: 10px 14px 14px 14px;
                 background: rgba(0,0,0,0.35);
                 border: 1px solid #ffd93d;
                 border-radius: 8px;
-                padding: 14px;
+                padding: 10px;
                 display: flex;
                 flex-direction: column;
-                gap: 10px;
+                gap: 6px;
             }
             .capsules-preview-top {
                 display: flex;
                 align-items: center;
-                gap: 12px;
+                gap: 10px;
             }
             .capsules-preview-icon {
-                width: 48px;
-                height: 48px;
+                width: 38px;
+                height: 38px;
                 flex-shrink: 0;
                 background: rgba(0,0,0,0.4);
                 border: 1px solid #ffd93d;
@@ -711,27 +786,27 @@ window.capsulesManager = {
                 display: flex;
                 align-items: center;
                 justify-content: center;
-                font-size: 1.8rem;
+                font-size: 1.4rem;
             }
-            .capsules-preview-icon img { width: 32px; height: 32px; object-fit: contain; }
-            .capsules-preview-info { display: flex; flex-direction: column; gap: 4px; flex: 1; }
-            .capsules-preview-name { font-weight: bold; color: #fff; font-size: 0.95rem; }
-            .capsules-preview-stats { display: flex; gap: 10px; }
+            .capsules-preview-icon img { width: 26px; height: 26px; object-fit: contain; }
+            .capsules-preview-info { display: flex; flex-direction: column; gap: 3px; flex: 1; }
+            .capsules-preview-name { font-weight: bold; color: #fff; font-size: 0.85rem; }
+            .capsules-preview-stats { display: flex; gap: 8px; }
             .capsules-preview-stat {
-                font-size: 0.75rem;
+                font-size: 0.68rem;
                 color: #ffd93d;
                 background: rgba(255, 217, 61, 0.1);
                 border: 1px solid rgba(255, 217, 61, 0.3);
-                padding: 2px 8px;
+                padding: 1px 6px;
                 border-radius: 10px;
             }
             .capsules-preview-desc {
-                font-size: 0.8rem;
+                font-size: 0.75rem;
                 color: #ddd;
-                line-height: 1.4;
+                line-height: 1.35;
                 background: rgba(0,0,0,0.25);
                 border-left: 3px solid #ffd93d;
-                padding: 8px 10px;
+                padding: 6px 8px;
                 border-radius: 4px;
             }
             .btn-capsule-utiliser {
@@ -740,9 +815,9 @@ window.capsulesManager = {
                 border-bottom: 3px solid #5c1414;
                 color: #fff;
                 font-weight: bold;
-                font-size: 0.95rem;
+                font-size: 0.85rem;
                 letter-spacing: 1px;
-                padding: 12px;
+                padding: 9px;
                 border-radius: 6px;
                 cursor: pointer;
                 transition: 0.15s;
@@ -752,7 +827,8 @@ window.capsulesManager = {
             .btn-capsule-utiliser:disabled { background: #333; border-color: #555; color: #777; cursor: not-allowed; }
 
             @media screen and (max-width: 480px) {
-                .capsules-grid { grid-template-columns: repeat(4, 1fr); }
+                .capsules-grid { grid-template-columns: repeat(5, 1fr); }
+                .capsules-bottom-sheet { max-height: 48vh; }
             }
         `;
         document.head.appendChild(style);

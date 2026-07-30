@@ -25,6 +25,210 @@ window.symbiotesManager = {
     },
 
     /**
+     * Ameliorations de Symbiotes : le joueur ne peut en choisir qu'UNE SEULE au total
+     * (choix definitif, pas d'echange possible une fois achetee). Cout fixe en gemmes.
+     * Pour l'instant une seule option existe, mais la structure est prete pour en
+     * accueillir d'autres plus tard (il suffira d'ajouter une entree ici).
+     */
+    ameliorations: {
+        recolteDoree: {
+            id: 'recolteDoree',
+            name: "Récolte Dorée",
+            icon: '💰',
+            desc: "+10% du prix de vente réel d'une plante, obtenus en golds immédiatement à sa récolte",
+            cout: 500,
+            type: 'gold_on_harvest',
+            valeur: 0.10
+        }
+    },
+
+    /**
+     * S'assure que gameState.symbioteAmeliorationChoisie existe (null = aucune choisie).
+     */
+    ensureAmeliorationDefaults: function() {
+        if (window.gameState && typeof window.gameState.symbioteAmeliorationChoisie === 'undefined') {
+            window.gameState.symbioteAmeliorationChoisie = null;
+        }
+    },
+
+    /**
+     * Retourne le pourcentage brut (0.10 = +10%) de l'amelioration choisie, si son type
+     * est bien "gold_on_harvest" (0 sinon ou si aucune amelioration n'est choisie).
+     */
+    getBonusRecolteGoldPct: function() {
+        this.ensureAmeliorationDefaults();
+        const choisie = window.gameState.symbioteAmeliorationChoisie;
+        if (!choisie) return 0;
+        const ameli = this.ameliorations[choisie];
+        if (!ameli || ameli.type !== 'gold_on_harvest') return 0;
+        return ameli.valeur;
+    },
+
+    /**
+     * Calcule le montant de gold bonus a accorder IMMEDIATEMENT a la recolte d'une
+     * plante (avant meme son extraction/vente), egal a 10% du PRIX DE VENTE REEL de
+     * cette plante - c'est a dire en tenant compte des memes bonus que ceux appliques
+     * lors d'une vente normale (Mutation Genetique + Arbre d'Evolution + Capsules),
+     * exactement comme dans Vente.js. Utilise Math.round (et non Math.floor) pour
+     * eviter qu'un bonus de 0.5 or moins ne tombe systematiquement a 0 sur les
+     * premieres routes (ou la valeur de vente des plantes est tres faible).
+     * @param {Object} plantTemplate - l'entree PLANT_DB de la plante recoltee
+     * @returns {number} montant de gold bonus (0 si aucune amelioration active)
+     */
+    calculerGoldBonusRecolte: function(plantTemplate) {
+        const pct = this.getBonusRecolteGoldPct();
+        if (pct <= 0 || !plantTemplate || !plantTemplate.goldValue) return 0;
+
+        const goldValuePerPlant = plantTemplate.goldValue || 1;
+
+        // Memes bonus de vente que ceux appliques dans Vente.js, pour que le "prix de
+        // vente" utilise ici corresponde exactement a ce que le joueur toucherait en vendant.
+        const bonusVente = window.evolutionManager
+            ? window.evolutionManager.getBonusCombine('goldSaleMultiplier', 'sale_value')
+            : (window.mutationManager && window.mutationManager.getBonusValue ? window.mutationManager.getBonusValue('goldSaleMultiplier') : 0);
+        const capsuleGoldMult = window.capsulesManager ? window.capsulesManager.getMultiplier('gold_sale_mult') : 1;
+
+        const prixVenteUnitaire = goldValuePerPlant * (1 + bonusVente) * capsuleGoldMult;
+
+        return Math.round(prixVenteUnitaire * pct);
+    },
+
+    /**
+     * Achete (et choisit definitivement) une amelioration de Symbiotes.
+     * @param {string} id - cle dans this.ameliorations
+     * @returns {boolean} - true si succes
+     */
+    acheterAmelioration: function(id) {
+        this.ensureAmeliorationDefaults();
+
+        if (window.gameState.symbioteAmeliorationChoisie) {
+            if (window.afficherToast) window.afficherToast('Vous avez déjà choisi votre amélioration de Symbiotes.');
+            return false;
+        }
+
+        const ameli = this.ameliorations[id];
+        if (!ameli) return false;
+
+        if (!window.economie || !window.economie.depenserGemmes(ameli.cout)) {
+            if (window.afficherToast) window.afficherToast('💎 Gemmes insuffisantes pour cette amélioration.');
+            return false;
+        }
+
+        window.gameState.symbioteAmeliorationChoisie = id;
+        this.sauvegarderEtat();
+        this.renderAmeliorationsUI();
+
+        if (window.afficherToast) window.afficherToast(`✅ ${ameli.name} activée !`, 'info');
+        return true;
+    },
+
+    /**
+     * Construit l'interface de la section "Amelioration" dans le menu des Symbiotes.
+     */
+    renderAmeliorationsUI: function() {
+        const container = document.getElementById('symbiotes-amelioration-container');
+        if (!container) return;
+        this.ensureAmeliorationDefaults();
+        this.injectAmeliorationStyles();
+
+        const choisie = window.gameState.symbioteAmeliorationChoisie;
+
+        let cartesHtml = '';
+        Object.keys(this.ameliorations).forEach(id => {
+            const ameli = this.ameliorations[id];
+            const estChoisie = choisie === id;
+            const verrouillee = choisie && !estChoisie;
+
+            cartesHtml += `
+                <div class="symbiote-ameli-card ${estChoisie ? 'symbiote-ameli-active' : ''} ${verrouillee ? 'symbiote-ameli-verrouillee' : ''}">
+                    <div class="symbiote-ameli-top">
+                        <span class="symbiote-ameli-icon">${ameli.icon}</span>
+                        <div class="symbiote-ameli-info">
+                            <span class="symbiote-ameli-name">${ameli.name}</span>
+                            <span class="symbiote-ameli-desc">${ameli.desc}</span>
+                        </div>
+                    </div>
+                    <button class="btn-symbiote-ameli" ${(estChoisie || verrouillee) ? 'disabled' : ''}
+                            onclick="window.symbiotesManager.acheterAmelioration('${id}')">
+                        ${estChoisie ? '✔ ACTIVE' : `💎 ${ameli.cout}`}
+                    </button>
+                </div>
+            `;
+        });
+
+        container.innerHTML = `
+            <h4 class="symbiote-ameli-titre">Amélioration <span class="symbiote-ameli-titre-sub">(une seule au choix)</span></h4>
+            ${cartesHtml}
+        `;
+    },
+
+    injectAmeliorationStyles: function() {
+        if (document.getElementById('symbiote-ameli-styles')) return;
+        const style = document.createElement('style');
+        style.id = 'symbiote-ameli-styles';
+        style.textContent = `
+            .symbiote-ameli-titre {
+                color: var(--neon-green);
+                font-size: 0.85rem;
+                margin: 15px 0 10px 0;
+                border-bottom: 1px solid var(--dim-green);
+                padding-bottom: 5px;
+            }
+            .symbiote-ameli-titre-sub {
+                color: #888;
+                font-size: 0.7rem;
+                font-weight: normal;
+                text-transform: none;
+            }
+            .symbiote-ameli-card {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 10px;
+                background: rgba(57, 255, 20, 0.05);
+                border: 1px solid var(--dim-green);
+                border-radius: 6px;
+                padding: 10px;
+                margin-bottom: 10px;
+            }
+            .symbiote-ameli-card.symbiote-ameli-active {
+                border-color: var(--neon-green);
+                background: rgba(57, 255, 20, 0.1);
+                box-shadow: 0 0 10px rgba(57, 255, 20, 0.2);
+            }
+            .symbiote-ameli-card.symbiote-ameli-verrouillee {
+                opacity: 0.5;
+                filter: grayscale(0.5);
+            }
+            .symbiote-ameli-top {
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                flex: 1;
+            }
+            .symbiote-ameli-icon { font-size: 1.5rem; }
+            .symbiote-ameli-info { display: flex; flex-direction: column; }
+            .symbiote-ameli-name { font-weight: bold; color: var(--text-color); font-size: 0.85rem; }
+            .symbiote-ameli-desc { font-size: 0.72rem; color: #999; }
+            .btn-symbiote-ameli {
+                background: #1b4d1b;
+                border: 1px solid var(--neon-green);
+                color: #fff;
+                padding: 8px 14px;
+                border-radius: 5px;
+                font-weight: bold;
+                font-size: 0.8rem;
+                cursor: pointer;
+                white-space: nowrap;
+                transition: 0.2s;
+            }
+            .btn-symbiote-ameli:hover:not(:disabled) { background: #2a6e2a; box-shadow: 0 0 10px var(--neon-green); }
+            .btn-symbiote-ameli:disabled { background: #333; border-color: #555; color: #777; cursor: not-allowed; }
+        `;
+        document.head.appendChild(style);
+    },
+
+    /**
      * Sauvegarde l'etat des symbiotes dans la progression du jeu.
      */
     sauvegarderEtat: function() {

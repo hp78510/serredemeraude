@@ -271,6 +271,8 @@ function creerOverlayMenu() {
 
                         <div id="symbiotes-slots-info" class="symbiotes-slots-info">0/2 emplacements actifs</div>
 
+                        <div id="symbiotes-amelioration-container"></div>
+
                         <h4 style="color: var(--neon-green); margin-bottom: 10px; border-bottom: 1px solid var(--dim-green); padding-bottom: 5px;">Mes Symbiotes</h4>
                         <div id="symbiotes-list-container" style="display: flex; flex-direction: column; gap: 10px;"></div>
                     </div>
@@ -581,6 +583,10 @@ window.acheterSymbiote = function(type) {
 window.refreshSymbiotesMenu = function() {
     const container = document.getElementById('symbiotes-list-container');
     if (!container || !window.symbiotesManager) return;
+
+    if (window.symbiotesManager.renderAmeliorationsUI) {
+        window.symbiotesManager.renderAmeliorationsUI();
+    }
 
     container.innerHTML = '';
 
