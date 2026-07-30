@@ -880,11 +880,12 @@ document.addEventListener('DOMContentLoaded', () => {
             const prevIdx = routeNumber - 2;
             
             // Afficher la plante de la route precedente (si elle existe) puis celle de cette route
+            // (images reelles au lieu des emojis, comme partout ailleurs dans le jeu)
             if (prevIdx >= 0 && db[prevIdx]) {
-                plantsHtml += `<span class="route-change-plant-icon">${db[prevIdx].icon}</span>`;
+                plantsHtml += `<span class="route-change-plant-icon">${window.creerImgPlanteHTML(db[prevIdx].name, 'route-change-plant-img')}</span>`;
             }
             if (currentIdx >= 0 && db[currentIdx]) {
-                plantsHtml += `<span class="route-change-plant-icon">${db[currentIdx].icon}</span>`;
+                plantsHtml += `<span class="route-change-plant-icon">${window.creerImgPlanteHTML(db[currentIdx].name, 'route-change-plant-img')}</span>`;
             }
         }
         
